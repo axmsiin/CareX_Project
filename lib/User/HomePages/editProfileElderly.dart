@@ -34,7 +34,6 @@ class _EditProfileElderlyState extends State<editProfileElderly> {
   TimeOfDay endTime = const TimeOfDay(hour: 18, minute: 0);
 
   RangeValues salaryRange = const RangeValues(450, 100000);
-  String salaryUnit = 'วัน';
 
   String? selectedScheduleType;
   final Set<String> selectedCustomDays = {};
@@ -237,7 +236,7 @@ class _EditProfileElderlyState extends State<editProfileElderly> {
     if (salaryText.trim().isEmpty) return;
 
     final match = RegExp(
-      r'(\d+)\s*-\s*(\d+)\s*บาท\s*/\s*(\S+)',
+      r'(\d+)\s*-\s*(\d+)',
     ).firstMatch(salaryText);
 
     if (match != null) {
@@ -245,7 +244,6 @@ class _EditProfileElderlyState extends State<editProfileElderly> {
         double.tryParse(match.group(1) ?? '450') ?? 450,
         double.tryParse(match.group(2) ?? '100000') ?? 100000,
       );
-      salaryUnit = match.group(3) ?? 'วัน';
     }
   }
 
@@ -1058,7 +1056,7 @@ class _EditProfileElderlyState extends State<editProfileElderly> {
     widget.elderlyData.startTime = formatTime(startTime);
     widget.elderlyData.endTime = formatTime(endTime);
     widget.elderlyData.salaryText =
-        '${salaryRange.start.round()} - ${salaryRange.end.round()} บาท / $salaryUnit';
+        '${salaryRange.start.round()} - ${salaryRange.end.round()} บาท / วัน';
     widget.elderlyData.serviceDatesText = _buildDetailedServiceDatesText();
     widget.elderlyData.selectedNeeds = List<String>.from(selectedNeeds);
     widget.elderlyData.eatingCare = _convertSelectionsToStorage(
@@ -1485,26 +1483,21 @@ class _EditProfileElderlyState extends State<editProfileElderly> {
                 children: [
                   Container(
                     width: 90,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 14,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFD5E7FF),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: DropdownButtonFormField<String>(
-                      value: salaryUnit,
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
+                    child: const Text(
+                      'วัน',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Color(0xFF564444),
                       ),
-                      items: const [
-                        DropdownMenuItem(value: 'วัน', child: Text('วัน')),
-                        DropdownMenuItem(value: 'เดือน', child: Text('เดือน')),
-                        DropdownMenuItem(value: 'ปี', child: Text('ปี')),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          salaryUnit = value!;
-                        });
-                      },
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -1516,8 +1509,20 @@ class _EditProfileElderlyState extends State<editProfileElderly> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('${salaryRange.start.round()} บาท'),
-                              Text('${salaryRange.end.round()} บาท'),
+                              Text(
+                                '${salaryRange.start.round()} บาท',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF564444),
+                                ),
+                              ),
+                              Text(
+                                '${salaryRange.end.round()} บาท',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF564444),
+                                ),
+                              ),
                             ],
                           ),
                         ),
