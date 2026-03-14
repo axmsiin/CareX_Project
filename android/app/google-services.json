@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "791859972992",
+    "project_id": "carex-490114",
+    "storage_bucket": "carex-490114.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:791859972992:android:939d8be05c5a536ac3cf65",
+        "android_client_info": {
+          "package_name": "com.example.carex"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCH5otujDmFEB7hIconT1zgLyXOylaMsqk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

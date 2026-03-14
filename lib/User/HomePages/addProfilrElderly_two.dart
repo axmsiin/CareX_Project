@@ -84,13 +84,15 @@ class _addProfileElderly_twoState extends State<addProfileElderly_two> {
 
     if (widget.elderlyData.salaryText.isNotEmpty) {
       final match = RegExp(
-        r'(\d+)\s*-\s*(\d+)',
+        r'(\d+)\s*-\s*(\d+)\s*บาท\s*/\s*(\S+)',
       ).firstMatch(widget.elderlyData.salaryText);
+
       if (match != null) {
         salaryRange = RangeValues(
           double.tryParse(match.group(1) ?? '450') ?? 450,
           double.tryParse(match.group(2) ?? '100000') ?? 100000,
         );
+        salaryUnit = match.group(3) ?? 'วัน';
       }
     }
   }
@@ -293,6 +295,69 @@ class _addProfileElderly_twoState extends State<addProfileElderly_two> {
     }
   }
 
+  Future<void> pickSalaryUnit() async {
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: const Color(0xFFFFFCE3),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        final units = ['วัน', 'เดือน', 'ปี'];
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: units.map((unit) {
+                final isSelected = salaryUnit == unit;
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: InkWell(
+                    onTap: () => Navigator.pop(context, unit),
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD5E7FF),
+                        borderRadius: BorderRadius.circular(14),
+                        border: isSelected
+                            ? Border.all(
+                                color: const Color(0xFF003F91),
+                                width: 1.5,
+                              )
+                            : null,
+                      ),
+                      child: Text(
+                        unit,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: Color(0xFF564444),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (result != null) {
+      setState(() {
+        salaryUnit = result;
+      });
+    }
+  }
+
   bool isDateMatched(DateTime date) {
     if (selectedScheduleType == null) return false;
 
@@ -393,7 +458,6 @@ class _addProfileElderly_twoState extends State<addProfileElderly_two> {
         }
 
         ranges.add(start == end ? '$start' : '$start-$end');
-
         monthParts.add('${ranges.join(', ')} ${thaiMonths[month]}');
       }
 
@@ -427,7 +491,7 @@ class _addProfileElderly_twoState extends State<addProfileElderly_two> {
       padding: const EdgeInsets.only(left: 12, top: 4),
       child: Text(
         error,
-        style: const TextStyle(color: const Color(0xFFF04444), fontSize: 12),
+        style: const TextStyle(color: Color(0xFFF04444), fontSize: 12),
       ),
     );
   }
@@ -540,6 +604,8 @@ class _addProfileElderly_twoState extends State<addProfileElderly_two> {
     widget.elderlyData.salaryText =
         '${salaryRange.start.round()} - ${salaryRange.end.round()} บาท / $salaryUnit';
     widget.elderlyData.serviceDatesText = buildDetailedServiceDatesText();
+    widget.elderlyData.scheduleType = selectedScheduleType ?? '';
+    widget.elderlyData.customDays = selectedCustomDays.toList();
 
     Navigator.push(
       context,
@@ -583,7 +649,7 @@ class _addProfileElderly_twoState extends State<addProfileElderly_two> {
               const SizedBox(height: 4),
               const Text(
                 '*หมายเหตุ : เลือกระยะเวลาทุกรูปแบบ โดยเลือกเป็น ทุกวัน,วันธรรมดา,เสาร์-อาทิตย์,กำหนดวันเอง,ทุกเดือน,ทุกปี',
-                style: TextStyle(fontSize: 12, color: const Color(0xFFF04444)),
+                style: TextStyle(fontSize: 12, color: Color(0xFFF04444)),
               ),
               const SizedBox(height: 14),
               Row(
@@ -762,28 +828,24 @@ class _addProfileElderly_twoState extends State<addProfileElderly_two> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 90,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD5E7FF),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: DropdownButtonFormField<String>(
-                      value: salaryUnit,
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
+                  InkWell(
+                    onTap: pickSalaryUnit,
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      width: 90,
+                      height: 42,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD5E7FF),
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      items: const [
-                        DropdownMenuItem(value: 'วัน', child: Text('วัน')),
-                        DropdownMenuItem(value: 'เดือน', child: Text('เดือน')),
-                        DropdownMenuItem(value: 'ปี', child: Text('ปี')),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          salaryUnit = value!;
-                        });
-                      },
+                      child: Text(
+                        salaryUnit,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: Color(0xFF564444),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
