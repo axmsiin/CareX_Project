@@ -73,10 +73,12 @@ class _LoginState extends State<Login> {
     });
 
     try {
-      await FirebaseAuth.instance.verifyPhoneNumber(
+      final FirebaseAuth auth = FirebaseAuth.instance;
+
+      await auth.verifyPhoneNumber(
         phoneNumber: "+66${phone.substring(1)}",
         verificationCompleted: (PhoneAuthCredential credential) async {
-          await FirebaseAuth.instance.signInWithCredential(credential);
+          await auth.signInWithCredential(credential);
 
           if (!mounted) return;
           await goToHomeByRole(phone);
@@ -92,8 +94,8 @@ class _LoginState extends State<Login> {
             SnackBar(content: Text("OTP Error: ${e.message}")),
           );
         },
-        codeSent: (String verId, int? resendToken) {
-          verificationId = verId;
+        codeSent: (String verificationId, int? resendToken) {
+          this.verificationId = verificationId;
 
           if (!mounted) return;
           setState(() {
@@ -102,8 +104,8 @@ class _LoginState extends State<Login> {
 
           showOtpDialog();
         },
-        codeAutoRetrievalTimeout: (String verId) {
-          verificationId = verId;
+        codeAutoRetrievalTimeout: (String verificationId) {
+          this.verificationId = verificationId;
 
           if (!mounted) return;
           setState(() {
