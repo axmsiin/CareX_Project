@@ -19,6 +19,8 @@ class _LoginState extends State<Login> {
   String verificationId = "";
   bool isLoading = false;
 
+  String? phoneError;
+
   Future<String> getUserRoleFromBackend(String phone) async {
     // TODO: รอเชื่อม backend จริง
     // backend จะคืนค่าเป็น 'caregiver' หรือ 'user'
@@ -54,17 +56,21 @@ class _LoginState extends State<Login> {
   Future<void> login() async {
     String phone = phoneController.text.trim();
 
+    setState(() {
+      phoneError = null;
+    });
+
     if (phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("กรุณากรอกเบอร์โทรศัพท์")),
-      );
+      setState(() {
+        phoneError = "กรุณากรอกเบอร์โทรศัพท์";
+      });
       return;
     }
 
     if (!RegExp(r'^0\d{9}$').hasMatch(phone)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง")),
-      );
+      setState(() {
+        phoneError = "กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง";
+      });
       return;
     }
 
@@ -88,11 +94,8 @@ class _LoginState extends State<Login> {
 
           setState(() {
             isLoading = false;
+            phoneError = e.message ?? "เกิดข้อผิดพลาดในการส่ง OTP";
           });
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("OTP Error: ${e.message}")),
-          );
         },
         codeSent: (String verificationId, int? resendToken) {
           this.verificationId = verificationId;
@@ -116,11 +119,8 @@ class _LoginState extends State<Login> {
     } catch (e) {
       setState(() {
         isLoading = false;
+        phoneError = "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง";
       });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("เกิดข้อผิดพลาด: $e")),
-      );
     }
   }
 
@@ -267,17 +267,46 @@ class _LoginState extends State<Login> {
               TextField(
                 controller: phoneController,
                 keyboardType: TextInputType.phone,
+                onChanged: (value) {
+                  if (phoneError != null) {
+                    setState(() {
+                      phoneError = null;
+                    });
+                  }
+                },
                 decoration: InputDecoration(
                   hintText: "เบอร์โทรศัพท์",
                   hintStyle: const TextStyle(
                     color: Color(0xFF564444),
                     fontSize: 14,
                   ),
+                  errorText: phoneError,
                   filled: true,
                   fillColor: const Color(0xFFD5E7FF),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(
+                      color: Color(0xFFF04444),
+                    ),
+                  ),
+                  focusedErrorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(
+                      color: Color(0xFFF04444),
+                      width: 1.5,
+                    ),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 14,
