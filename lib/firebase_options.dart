@@ -41,26 +41,26 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAOVbFI4iwROAPLHgc5IJhEc4xVSbGqJiM',
-    appId: '1:791859972992:web:aee8dca56dc1f033c3cf65',
+    apiKey: 'AIzaSyD365jvdsV2Hgqfmr3xT1qrJacg_jrwtV0',
+    appId: '1:791859972992:web:0e56c7b4757db003c3cf65',
     messagingSenderId: '791859972992',
     projectId: 'carex-490114',
     authDomain: 'carex-490114.firebaseapp.com',
     storageBucket: 'carex-490114.firebasestorage.app',
-    measurementId: 'G-QC7BDLG2ZH',
+    measurementId: 'G-N74RCJPPJL',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCH5otujDmFEB7hIconT1zgLyXOylaMsqk',
-    appId: '1:791859972992:android:939d8be05c5a536ac3cf65',
+    apiKey: 'AIzaSyCh4QSBFI2cHQ54WZdq_4jHlc8GPqKut5E',
+    appId: '1:791859972992:android:3ce3a297898e8ca3c3cf65',
     messagingSenderId: '791859972992',
     projectId: 'carex-490114',
     storageBucket: 'carex-490114.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCz8JIEpobS9Vqj1OxsvRtuEqb6uHOT9x4',
-    appId: '1:791859972992:ios:62f2190bc00282e8c3cf65',
+    apiKey: 'AIzaSyD27m7SrT1gnywz9u9DAqsgFImdhCm7mB8',
+    appId: '1:791859972992:ios:84a50cbab0cc81ccc3cf65',
     messagingSenderId: '791859972992',
     projectId: 'carex-490114',
     storageBucket: 'carex-490114.firebasestorage.app',

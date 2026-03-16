@@ -7,7 +7,7 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:791859972992:android:939d8be05c5a536ac3cf65",
+        "mobilesdk_app_id": "1:791859972992:android:3ce3a297898e8ca3c3cf65",
         "android_client_info": {
           "package_name": "com.example.carex"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCH5otujDmFEB7hIconT1zgLyXOylaMsqk"
+          "current_key": "AIzaSyCh4QSBFI2cHQ54WZdq_4jHlc8GPqKut5E"
         }
       ],
       "services": {
