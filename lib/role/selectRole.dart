@@ -2,23 +2,98 @@ import 'package:flutter/material.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/profileCaregiver_one.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/caregiverData.dart';
 import 'package:carex/User/HomePages/home.dart';
+import 'package:carex/controllers/auth_controller.dart';
+import 'package:carex/services/app_session.dart';
 
-class selectrole extends StatefulWidget {
+class selectRole extends StatefulWidget {
   final String fullName;
   final String phone;
+  final String firebaseUid;
 
-  const selectrole({
+  const selectRole({
     super.key,
     required this.fullName,
     required this.phone,
+    required this.firebaseUid,
   });
 
   @override
-  State<selectrole> createState() => _selectroleState();
+  State<selectRole> createState() => _selectRoleState();
 }
 
-class _selectroleState extends State<selectrole> {
+class _selectRoleState extends State<selectRole> {
   String? selectedRole;
+  bool isLoading = false;
+
+  Future<void> _registerToBackend(String role) async {
+    if (isLoading) return;
+
+    setState(() {
+      selectedRole = role;
+      isLoading = true;
+    });
+
+    try {
+      final result = await AuthController.registerUser(
+        phone: widget.phone,
+        role: role,
+        firebaseUid: widget.firebaseUid,
+        userName: widget.fullName,
+      );
+
+      if (!result.success) {
+        throw Exception(result.message);
+      }
+
+      await AppSession.saveUserSession(
+        userId: result.userId,
+        role: result.role ?? role,
+        phone: AuthController.normalizePhone(widget.phone),
+        userName: result.userName ?? widget.fullName,
+        firebaseUid: widget.firebaseUid,
+        token: result.token,
+      );
+      await AppSession.clearPendingRegistration();
+
+      if (!mounted) return;
+
+      if (role == 'client') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const home(),
+          ),
+        );
+      } else {
+        final profile = caregiverData(
+          fullName: widget.fullName,
+          phone: AuthController.normalizePhone(widget.phone),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => profilecaregiver_one(
+              profile: profile,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+        ),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,68 +119,43 @@ class _selectroleState extends State<selectrole> {
               ),
               const SizedBox(height: 80),
               GestureDetector(
-                onTap: () {
-                  setState(() {
-                    selectedRole = "user";
-                  });
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const home(),
-                    ),
-                  );
-                },
+                onTap: () => _registerToBackend('client'),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   decoration: BoxDecoration(
-                    color: selectedRole == "user"
+                    color: selectedRole == "client"
                         ? const Color(0xFF8FBFFF)
                         : const Color(0xFFD5E7FF),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   alignment: Alignment.center,
-                  child: const Text(
-                    "ผู้ใช้",
-                    style: TextStyle(fontSize: 16),
+                  child: Text(
+                    isLoading && selectedRole == 'client'
+                        ? 'กำลังดำเนินการ...'
+                        : 'ผู้ใช้',
+                    style: const TextStyle(fontSize: 16),
                   ),
                 ),
               ),
               const SizedBox(height: 30),
               GestureDetector(
-                onTap: () {
-                  setState(() {
-                    selectedRole = "admin";
-                  });
-
-                  final profile = caregiverData(
-                    fullName: widget.fullName,
-                    phone: widget.phone,
-                  );
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => profilecaregiver_one(
-                        profile: profile,
-                      ),
-                    ),
-                  );
-                },
+                onTap: () => _registerToBackend('caregiver'),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   decoration: BoxDecoration(
-                    color: selectedRole == "admin"
+                    color: selectedRole == "caregiver"
                         ? const Color(0xFF8FBFFF)
                         : const Color(0xFFD5E7FF),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   alignment: Alignment.center,
-                  child: const Text(
-                    "ผู้ดูแล",
-                    style: TextStyle(fontSize: 16),
+                  child: Text(
+                    isLoading && selectedRole == 'caregiver'
+                        ? 'กำลังดำเนินการ...'
+                        : 'ผู้ดูแล',
+                    style: const TextStyle(fontSize: 16),
                   ),
                 ),
               ),
@@ -113,17 +163,21 @@ class _selectroleState extends State<selectrole> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
+                  onPressed: isLoading
+                      ? null
+                      : () {
+                          Navigator.pop(context);
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFF8B8E),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
                   ),
-                  child: const Text("ย้อนกลับ",
-                      style: TextStyle(color: Color(0xFF564444))),
+                  child: const Text(
+                    "ย้อนกลับ",
+                    style: TextStyle(color: Color(0xFF564444)),
+                  ),
                 ),
               ),
             ],

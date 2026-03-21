@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:carex/Caregiver/HomePages/home.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/caregiverData.dart';
 import 'package:carex/authentication/register.dart';
+import 'package:carex/controllers/auth_controller.dart';
+import 'package:carex/services/app_session.dart';
 import 'package:carex/User/HomePages/home.dart' as user_home;
 
 class Login extends StatefulWidget {
@@ -18,43 +20,139 @@ class _LoginState extends State<Login> {
 
   String verificationId = "";
   bool isLoading = false;
+  bool _isVerifyingOtp = false;
+  bool _hasCompletedLogin = false;
 
   String? phoneError;
 
-  Future<String> getUserRoleFromBackend(String phone) async {
-    // TODO: รอเชื่อม backend จริง
-    // backend จะคืนค่าเป็น 'caregiver' หรือ 'user'
-    return 'caregiver';
-  }
-
-  Future<void> goToHomeByRole(String phone) async {
-    final role = await getUserRoleFromBackend(phone);
-
+  Future<void> _goToHomeByRole(
+    String role,
+    String phone, {
+    String? userName,
+  }) async {
     if (!mounted) return;
 
-    if (role == 'user') {
-      Navigator.pushReplacement(
+    if (role == 'client') {
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
           builder: (context) => const user_home.home(),
         ),
+        (route) => false,
       );
-    } else {
-      Navigator.pushReplacement(
+    } else if (role == 'caregiver') {
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
           builder: (context) => Home(
             profile: caregiverData(
+              fullName: userName ?? '',
               phone: phone,
             ),
           ),
         ),
+        (route) => false,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ไม่พบบทบาทผู้ใช้ในระบบ')),
+      );
+    }
+  }
+
+  Future<void> _completeLogin() async {
+    if (_hasCompletedLogin) return;
+    _hasCompletedLogin = true;
+
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    debugPrint('Login: _completeLogin() started, firebaseUser=${firebaseUser?.uid}');
+    if (firebaseUser == null) {
+      _hasCompletedLogin = false;
+      setState(() {
+        isLoading = false;
+        phoneError = 'ไม่พบข้อมูลผู้ใช้ Firebase';
+      });
+      return;
+    }
+
+    try {
+      debugPrint('Login: calling AuthController.loginUser(firebaseUid=${firebaseUser.uid})');
+      final result = await AuthController.loginUser(
+        firebaseUid: firebaseUser.uid,
+        phone: AuthController.normalizePhone(phoneController.text.trim()),
+      );
+
+      debugPrint('Login: AuthController.loginUser returned success=${result.success} role=${result.role} userId=${result.userId} token=${result.token}');
+
+      if (!result.success) {
+        _hasCompletedLogin = false;
+        setState(() {
+          isLoading = false;
+        });
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.message)),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const Register()),
+        );
+        return;
+      }
+
+      final role = result.role;
+      final userName = result.userName;
+
+      if (role == null || role.isEmpty) {
+        _hasCompletedLogin = false;
+        setState(() {
+          isLoading = false;
+        });
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('ไม่พบ role ของผู้ใช้')),
+        );
+        return;
+      }
+
+      await AppSession.saveUserSession(
+        userId: result.userId,
+        role: role,
+        phone: AuthController.normalizePhone(phoneController.text.trim()),
+        userName: userName ?? '',
+        firebaseUid: firebaseUser.uid,
+        token: result.token,
+      );
+
+      setState(() {
+        isLoading = false;
+      });
+
+      await _goToHomeByRole(
+        role,
+        AuthController.normalizePhone(phoneController.text.trim()),
+        userName: userName,
+      );
+    } catch (e) {
+      _hasCompletedLogin = false;
+      setState(() {
+        isLoading = false;
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('เข้าสู่ระบบไม่สำเร็จ: $e')),
       );
     }
   }
 
   Future<void> login() async {
-    String phone = phoneController.text.trim();
+    final phone = phoneController.text.trim();
+
+    debugPrint('Login: login() called for phone=$phone');
 
     setState(() {
       phoneError = null;
@@ -74,22 +172,43 @@ class _LoginState extends State<Login> {
       return;
     }
 
+    _hasCompletedLogin = false;
+    _isVerifyingOtp = false;
+
     setState(() {
       isLoading = true;
     });
 
     try {
-      final FirebaseAuth auth = FirebaseAuth.instance;
+      final auth = FirebaseAuth.instance;
+
+      debugPrint('Login: calling FirebaseAuth.verifyPhoneNumber for +66${phone.substring(1)}');
 
       await auth.verifyPhoneNumber(
         phoneNumber: "+66${phone.substring(1)}",
         verificationCompleted: (PhoneAuthCredential credential) async {
-          await auth.signInWithCredential(credential);
+          debugPrint('Login: verificationCompleted callback fired');
+          try {
+            await auth.signInWithCredential(credential);
+            debugPrint('Login: signInWithCredential (auto) successful');
 
-          if (!mounted) return;
-          await goToHomeByRole(phone);
+            if (!mounted) return;
+
+            setState(() {
+              isLoading = false;
+            });
+
+            await _completeLogin();
+          } catch (e) {
+            debugPrint('Login: verificationCompleted error: $e');
+            if (!mounted) return;
+            setState(() {
+              isLoading = false;
+            });
+          }
         },
         verificationFailed: (FirebaseAuthException e) {
+          debugPrint('Login: verificationFailed code=${e.code} message=${e.message}');
           if (!mounted) return;
 
           setState(() {
@@ -98,6 +217,7 @@ class _LoginState extends State<Login> {
           });
         },
         codeSent: (String verificationId, int? resendToken) {
+          debugPrint('Login: codeSent, verificationId=$verificationId resendToken=$resendToken');
           this.verificationId = verificationId;
 
           if (!mounted) return;
@@ -108,6 +228,7 @@ class _LoginState extends State<Login> {
           showOtpDialog();
         },
         codeAutoRetrievalTimeout: (String verificationId) {
+          debugPrint('Login: codeAutoRetrievalTimeout, verificationId=$verificationId');
           this.verificationId = verificationId;
 
           if (!mounted) return;
@@ -117,6 +238,7 @@ class _LoginState extends State<Login> {
         },
       );
     } catch (e) {
+      debugPrint('Login: verifyPhoneNumber threw: $e');
       setState(() {
         isLoading = false;
         phoneError = "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง";
@@ -188,7 +310,9 @@ class _LoginState extends State<Login> {
   }
 
   Future<void> verifyOtp() async {
-    String otp = otpController.text.trim();
+    if (_isVerifyingOtp || _hasCompletedLogin) return;
+
+    final otp = otpController.text.trim();
 
     if (otp.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -197,22 +321,38 @@ class _LoginState extends State<Login> {
       return;
     }
 
-    PhoneAuthCredential credential = PhoneAuthProvider.credential(
+    _isVerifyingOtp = true;
+
+    final credential = PhoneAuthProvider.credential(
       verificationId: verificationId,
       smsCode: otp,
     );
 
     try {
+      debugPrint('Login: verifyOtp() signing in with credential (manual)');
+      setState(() {
+        isLoading = true;
+      });
+
       await FirebaseAuth.instance.signInWithCredential(credential);
+      debugPrint('Login: verifyOtp signInWithCredential successful');
 
       if (!mounted) return;
-
       Navigator.pop(context);
-      await goToHomeByRole(phoneController.text.trim());
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("OTP ไม่ถูกต้อง")),
-      );
+
+      await _completeLogin();
+    } catch (_) {
+      setState(() {
+        isLoading = false;
+      });
+
+      if (!_hasCompletedLogin) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("OTP ไม่ถูกต้อง")),
+        );
+      }
+    } finally {
+      _isVerifyingOtp = false;
     }
   }
 
@@ -267,7 +407,7 @@ class _LoginState extends State<Login> {
               TextField(
                 controller: phoneController,
                 keyboardType: TextInputType.phone,
-                onChanged: (value) {
+                onChanged: (_) {
                   if (phoneError != null) {
                     setState(() {
                       phoneError = null;
