@@ -5,6 +5,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:carex/Caregiver/HomePages/home.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/caregiverData.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/profileCaregiver.dart';
+import 'package:carex/Caregiver/notification/widgets/action_button.dart';
+import 'package:carex/Caregiver/notification/widgets/empty_state.dart';
+import 'package:carex/Caregiver/notification/widgets/match_card.dart';
 
 class ElderlyMatchData {
   final String fullName;
@@ -712,18 +715,22 @@ class _NotificationState extends State<notification> {
       key: const ValueKey('matched'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _matchCard(),
+        MatchCard(
+          matchData: matchData,
+          decisionRemaining: decisionRemaining,
+          formatDuration: formatDuration,
+        ),
         const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            _actionButton(
+            ActionButton(
               text: 'รับ',
               backgroundColor: const Color(0xFF35CC2D),
               onPressed: acceptMatch,
             ),
             const SizedBox(width: 8),
-            _actionButton(
+            ActionButton(
               text: 'ปฏิเสธ',
               backgroundColor: const Color(0xFFFF6B6B),
               onPressed: rejectMatch,
@@ -735,114 +742,7 @@ class _NotificationState extends State<notification> {
   }
 
   Widget _buildEmptyState() {
-    return const Center(
-      key: ValueKey('empty'),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.account_circle_outlined,
-            size: 180,
-            color: Color(0xFFFCFAFF),
-          ),
-          SizedBox(height: 12),
-          Text(
-            'ไม่มีข้อมูล',
-            style: TextStyle(fontSize: 18, color: Color(0xFF564444)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _matchCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFDCE6F2),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Align(
-            alignment: Alignment.topRight,
-            child: Text(
-              'ยืนยันภายใน ${formatDuration(decisionRemaining)}',
-              style: const TextStyle(
-                fontSize: 10,
-                color: Color(0xFFFF6B6B),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.shield_outlined,
-                  color: Color(0xFF3B6EA5),
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: DefaultTextStyle(
-                  style: const TextStyle(
-                    fontSize: 10.5,
-                    color: Color(0xFF564444),
-                    height: 1.55,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('ชื่อผู้สูงอายุ : ${matchData.fullName}'),
-                      Text('อายุ : ${matchData.age} ปี'),
-                      Text('เพศ : ${matchData.gender}'),
-                      Text('จังหวัด : ${matchData.province}'),
-                      Text('รายละเอียด : ${matchData.detail}'),
-                      Text('โรคประจำตัว : ${matchData.disease}'),
-                      Text('เวลาที่ต้องการ : ${matchData.schedule}'),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _actionButton({
-    required String text,
-    required Color backgroundColor,
-    required VoidCallback onPressed,
-  }) {
-    return SizedBox(
-      height: 26,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-        ),
-        onPressed: onPressed,
-        child: Text(text),
-      ),
-    );
+    return const EmptyState();
   }
 
   Widget _buildBottomNav() {

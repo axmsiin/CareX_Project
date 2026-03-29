@@ -1,7 +1,7 @@
 import 'package:carex/Caregiver/HomePages/home.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/caregiverData.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/caregiver_store.dart';
-import 'package:carex/Caregiver/Profile_Caregiver/editProfileCaregiver.dart';
+import 'package:carex/Caregiver/Profile_Caregiver/editprofileCaregiver.dart';
 import 'package:carex/Caregiver/notification/notification.dart';
 import 'package:carex/authentication/login.dart';
 import 'package:carex/services/app_session.dart';
