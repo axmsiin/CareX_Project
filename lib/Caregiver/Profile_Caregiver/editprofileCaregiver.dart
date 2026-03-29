@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/caregiverData.dart';
 import 'package:carex/map.dart';
+import 'package:carex/Caregiver/Profile_Caregiver/caregiver_store.dart';
+import 'package:carex/services/backend_data_service.dart';
 
 class editprofileCaregiver extends StatefulWidget {
   final caregiverData profile;
@@ -207,7 +209,7 @@ class _EditProfileCaregiverPageState extends State<editprofileCaregiver> {
 
   String formatThaiDate(DateTime? date) {
     if (date == null) return '-';
-    return '${date.day} ${thaiMonths[date.month]} ${date.year}';
+    return '${date.day} ${thaiMonths[date.month]} ${date.year + 543}';
   }
 
   String formatTime(TimeOfDay time) {
@@ -490,7 +492,7 @@ class _EditProfileCaregiverPageState extends State<editprofileCaregiver> {
                         hintText: 'พิมพ์ชื่อจังหวัด',
                         prefixIcon: const Icon(Icons.search),
                         filled: true,
-                        fillColor: const Color(0xFFD5E7FF),
+                        fillColor: const Color(0xFFFCFAFF),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
@@ -569,7 +571,7 @@ class _EditProfileCaregiverPageState extends State<editprofileCaregiver> {
       padding:
           padding ?? const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFD5E7FF),
+        color: const Color(0xFFFCFAFF),
         borderRadius: BorderRadius.circular(12),
       ),
       child: child,
@@ -613,14 +615,14 @@ class _EditProfileCaregiverPageState extends State<editprofileCaregiver> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFD5E7FF),
+          color: const Color(0xFFFCFAFF),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
             Icon(
               isSelected ? Icons.check_box : Icons.check_box_outline_blank,
-              color: const Color(0xFF003F91),
+              color: const Color(0xFFEE711E),
             ),
             const SizedBox(width: 8),
             Text(
@@ -646,14 +648,14 @@ class _EditProfileCaregiverPageState extends State<editprofileCaregiver> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFD5E7FF),
+          color: const Color(0xFFFCFAFF),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
             Icon(
               isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-              color: const Color(0xFF003F91),
+              color: const Color(0xFFEE711E),
             ),
             const SizedBox(width: 8),
             Text(
@@ -666,7 +668,7 @@ class _EditProfileCaregiverPageState extends State<editprofileCaregiver> {
     );
   }
 
-  void saveProfile() {
+  Future<void> saveProfile() async {
     FocusScope.of(context).unfocus();
 
     widget.profile.fullName = fullNameController.text.trim();
@@ -685,13 +687,24 @@ class _EditProfileCaregiverPageState extends State<editprofileCaregiver> {
     widget.profile.degree = selectedDegree ?? '';
     widget.profile.graduationDate = selectedGraduationDate;
 
+    final ok = await BackendDataService.updateCaregiverProfile(widget.profile);
+    if (!ok) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('อัปเดตข้อมูลผู้ดูแลลงฐานข้อมูลไม่สำเร็จ')),
+      );
+      return;
+    }
+
+    await CaregiverStore.syncFromBackend();
+    if (!mounted) return;
     Navigator.pop(context, true);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFCE3),
+      backgroundColor: const Color(0xFFFDF0E8),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -716,7 +729,7 @@ class _EditProfileCaregiverPageState extends State<editprofileCaregiver> {
                 child: Icon(
                   Icons.account_circle_outlined,
                   size: 100,
-                  color: Color(0xFFD5E7FF),
+                  color: Color(0xFFFCFAFF),
                 ),
               ),
               const SizedBox(height: 20),
@@ -885,7 +898,7 @@ class _EditProfileCaregiverPageState extends State<editprofileCaregiver> {
                         'สะดวกตลอดเวลา',
                         style: TextStyle(color: Color(0xFF564444)),
                       ),
-                      activeColor: const Color(0xFF003F91),
+                      activeColor: const Color(0xFFEE711E),
                     ),
                     if (!allDayAvailable)
                       Row(
@@ -1022,7 +1035,7 @@ class _EditProfileCaregiverPageState extends State<editprofileCaregiver> {
                   onPressed: saveProfile,
                   style: ElevatedButton.styleFrom(
                     elevation: 0,
-                    backgroundColor: const Color(0xFF8FBFFF),
+                    backgroundColor: const Color(0xFFEE711E),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),
@@ -1041,16 +1054,16 @@ class _EditProfileCaregiverPageState extends State<editprofileCaregiver> {
       bottomNavigationBar: Container(
         height: 80,
         decoration: const BoxDecoration(
-          color: Color(0xFFD5E7FF),
+          color: Color(0xFFFCFAFF),
           borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
         ),
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            Icon(Icons.home, size: 36, color: const Color(0xFF003F91)),
-            Icon(Icons.notifications, size: 34, color: const Color(0xFF003F91)),
+            Icon(Icons.home, size: 36, color: const Color(0xFFEE711E)),
+            Icon(Icons.notifications, size: 34, color: const Color(0xFFEE711E)),
             Icon(Icons.account_circle,
-                size: 36, color: const Color(0xFF003F91)),
+                size: 36, color: const Color(0xFFEE711E)),
           ],
         ),
       ),

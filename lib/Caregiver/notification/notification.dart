@@ -106,30 +106,22 @@ class _NotificationState extends State<notification> {
   ElderlyMatchData get matchData =>
       widget.mockMatch ??
       const ElderlyMatchData(
-        fullName: 'นายสมชาย ใจดี',
-        age: 77,
-        gender: 'ชาย',
-        province: 'กรุงเทพมหานคร',
-        detail: 'ช่วยพยุงเดิน / ดูแลกิจวัตรประจำวัน',
-        disease: 'เบาหวาน, ความดันโลหิตสูง',
-        schedule: 'จ.-ศ. 08.00 - 17.00 น.',
-        phone: '0965738701',
-        birthDateText: '19 กรกฎาคม 1995',
-        weightText: '69 กก.',
-        chronicDiseaseText: 'โรคประจำตัว',
-        address:
-            '95/675 หมู่บ้านชาย ถนนสุขสวัสดิ์ แขวงบางชื่อ เขตบางชื่อ กรุงเทพมหานคร',
-        serviceDateText: 'วันที่ : 5-9 มีนาคม 2026',
-        serviceTimeText: 'เวลา : 09.00 - 18.00 น.',
-        wageText: 'วันละ : 1,500 บาท',
-        careNeeds: [
-          'กิจวัตรประจำวัน',
-          'เตือนการกินยา',
-          'การทำแผล\nแผลสด / แผลกดทับ',
-          'การเฝ้าสังเกตอาการข้างเคียง\nเหลว / ปั๊ม',
-          'การนวดแผนไทย / กายภาพเบื้องต้น',
-          'กำหนดการกินอาหาร\nอาหารอ่อน / อาหารเฉพาะโรค',
-        ],
+        fullName: '-',
+        age: 0,
+        gender: '-',
+        province: '-',
+        detail: '-',
+        disease: '-',
+        schedule: '-',
+        phone: '-',
+        birthDateText: '-',
+        weightText: '-',
+        chronicDiseaseText: '-',
+        address: '-',
+        serviceDateText: '-',
+        serviceTimeText: '-',
+        wageText: '-',
+        careNeeds: [],
       );
 
   @override
@@ -259,10 +251,10 @@ class _NotificationState extends State<notification> {
                 width: 380,
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF7F7F7),
+                  color: const Color(0xFFFCFAFF),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: const Color(0xFF8FBFFF),
+                    color: const Color(0xFFEE711E),
                     width: 1.2,
                   ),
                 ),
@@ -310,13 +302,13 @@ class _NotificationState extends State<notification> {
                           vertical: 10,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFD5E7FF),
+                          color: const Color(0xFFFCFAFF),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.add, color: Color(0xFF003F91)),
+                            const Icon(Icons.add, color: Color(0xFFEE711E)),
                             const SizedBox(width: 6),
                             Text(
                               selectedDocumentName ?? 'เลือกไฟล์อัปโหลด',
@@ -344,7 +336,7 @@ class _NotificationState extends State<notification> {
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF35CC2D),
-                            disabledBackgroundColor: const Color(0xFFE0E0E0),
+                            disabledBackgroundColor: const Color(0xFFEBEBEB),
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
@@ -394,7 +386,7 @@ class _NotificationState extends State<notification> {
               backgroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(color: Color(0xFF8FBFFF)),
+                side: const BorderSide(color: Color(0xFFEE711E)),
               ),
               contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
               content: SizedBox(
@@ -460,7 +452,7 @@ class _NotificationState extends State<notification> {
                       alignment: Alignment.centerRight,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4CD964),
+                          backgroundColor: const Color(0xFF35CC2D),
                           foregroundColor: Colors.white,
                           minimumSize: const Size(64, 30),
                           padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -527,7 +519,7 @@ class _NotificationState extends State<notification> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
-            color: const Color(0xFFD5E7FF),
+            color: const Color(0xFFFCFAFF),
             borderRadius: BorderRadius.circular(8),
             border: errorText != null
                 ? Border.all(color: const Color(0xFFF04444))
@@ -572,9 +564,9 @@ class _NotificationState extends State<notification> {
             width: 350,
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
             decoration: BoxDecoration(
-              color: const Color(0xFFF7F7F7),
+              color: const Color(0xFFFCFAFF),
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFF8FBFFF), width: 1.2),
+              border: Border.all(color: const Color(0xFFEE711E), width: 1.2),
             ),
             child: Stack(
               children: [
@@ -687,7 +679,7 @@ class _NotificationState extends State<notification> {
         currentStep != NotificationFlowStep.completed;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFCE3),
+      backgroundColor: const Color(0xFFFDF0E8),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
@@ -727,7 +719,7 @@ class _NotificationState extends State<notification> {
           children: [
             _actionButton(
               text: 'รับ',
-              backgroundColor: const Color(0xFF4CD964),
+              backgroundColor: const Color(0xFF35CC2D),
               onPressed: acceptMatch,
             ),
             const SizedBox(width: 8),
@@ -751,7 +743,7 @@ class _NotificationState extends State<notification> {
           Icon(
             Icons.account_circle_outlined,
             size: 180,
-            color: Color(0xFFD5E7FF),
+            color: Color(0xFFFCFAFF),
           ),
           SizedBox(height: 12),
           Text(
@@ -857,7 +849,7 @@ class _NotificationState extends State<notification> {
     return Container(
       height: 85,
       decoration: const BoxDecoration(
-        color: Color(0xFFD5E7FF),
+        color: Color(0xFFFCFAFF),
         borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
       ),
       child: Row(
@@ -865,14 +857,14 @@ class _NotificationState extends State<notification> {
         children: [
           IconButton(
             onPressed: _goToHome,
-            icon: const Icon(Icons.home, size: 34, color: Color(0xFF8FBFFF)),
+            icon: const Icon(Icons.home, size: 34, color: Color(0xFFEE711E)),
           ),
           IconButton(
             onPressed: () {},
             icon: const Icon(
               Icons.notifications,
               size: 34,
-              color: Color(0xFF003F91),
+              color: Color(0xFFEE711E),
             ),
           ),
           IconButton(
@@ -880,7 +872,7 @@ class _NotificationState extends State<notification> {
             icon: const Icon(
               Icons.account_circle,
               size: 38,
-              color: Color(0xFF8FBFFF),
+              color: Color(0xFFEE711E),
             ),
           ),
         ],

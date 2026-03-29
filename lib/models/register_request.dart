@@ -1,20 +1,17 @@
 class RegisterRequest {
-  final String phone;
-  final String role;
+  final String tel;
   final String firebaseUid;
   final String userName;
 
   RegisterRequest({
-    required this.phone,
-    required this.role,
+    required this.tel,
     required this.firebaseUid,
     required this.userName,
   });
 
   Map<String, dynamic> toJson() {
     return {
-      'phone': phone,
-      'role': role,
+      'tel': tel,
       'firebase_uid': firebaseUid,
       'user_name': userName,
     };

@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/profileCaregiver_one.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/caregiverData.dart';
+import 'package:carex/Caregiver/Profile_Caregiver/caregiver_store.dart';
 import 'package:carex/User/HomePages/home.dart';
+import 'package:carex/User/Profile/userStore.dart';
+import 'package:carex/User/Profile/userData.dart';
 import 'package:carex/controllers/auth_controller.dart';
 import 'package:carex/services/app_session.dart';
+import 'package:carex/services/auth_service.dart';
 
 class selectRole extends StatefulWidget {
   final String fullName;
@@ -25,7 +29,7 @@ class _selectRoleState extends State<selectRole> {
   String? selectedRole;
   bool isLoading = false;
 
-  Future<void> _registerToBackend(String role) async {
+  Future<void> _registerAndProceed(String role) async {
     if (isLoading) return;
 
     setState(() {
@@ -34,35 +38,90 @@ class _selectRoleState extends State<selectRole> {
     });
 
     try {
-      final result = await AuthController.registerUser(
+      final registerResult = await AuthController.registerUser(
         phone: widget.phone,
         role: role,
         firebaseUid: widget.firebaseUid,
         userName: widget.fullName,
       );
 
-      if (!result.success) {
-        throw Exception(result.message);
+      if (!registerResult.success) {
+        throw Exception(registerResult.message);
+      }
+
+      final registeredUserId = registerResult.userId;
+      if (registeredUserId == null || registeredUserId.isEmpty) {
+        throw Exception('ระบบไม่ได้ส่ง user_id กลับมาหลังลงทะเบียน');
+      }
+
+      final loginResult = await AuthController.loginUser(
+        firebaseUid: widget.firebaseUid,
+        phone: AuthController.normalizePhone(widget.phone),
+      );
+
+      if (!loginResult.success) {
+        throw Exception(loginResult.message);
+      }
+
+      final userId = loginResult.userId ?? registeredUserId;
+      final token = loginResult.token;
+      final clientId = loginResult.clientId;
+      final caregiverId = loginResult.caregiverId;
+
+      if (userId == null || userId.isEmpty) {
+        throw Exception('ระบบไม่ได้ส่ง user_id กลับมาหลังเข้าสู่ระบบ');
+      }
+
+      if (token == null || token.isEmpty) {
+        throw Exception('ระบบไม่ได้ส่ง token กลับมาหลังเข้าสู่ระบบ');
       }
 
       await AppSession.saveUserSession(
-        userId: result.userId,
-        role: result.role ?? role,
+        userId: userId,
+        role: role,
         phone: AuthController.normalizePhone(widget.phone),
-        userName: result.userName ?? widget.fullName,
+        userName: widget.fullName,
         firebaseUid: widget.firebaseUid,
-        token: result.token,
+        token: token,
+        clientId: clientId,
+        caregiverId: caregiverId,
       );
-      await AppSession.clearPendingRegistration();
-
-      if (!mounted) return;
 
       if (role == 'client') {
+        // ถ้ามี clientId จาก login แล้ว ไม่ต้องสร้างใหม่
+        if (clientId != null && clientId.isNotEmpty) {
+          await AppSession.saveClientId(clientId);
+        } else {
+          // สร้าง client profile ใหม่
+          final clientResult = await AuthService.createClientProfile(
+            fullname: widget.fullName,
+            tel: AuthController.normalizePhone(widget.phone),
+            token: token,
+          );
+
+          if (!clientResult.success) {
+            throw Exception(clientResult.message);
+          }
+
+          if (clientResult.clientId != null &&
+              clientResult.clientId!.isNotEmpty) {
+            await AppSession.saveClientId(clientResult.clientId!);
+          }
+        }
+
+        await UserStore.save(
+          UserData(
+            fullName: widget.fullName,
+            phone: AuthController.normalizePhone(widget.phone),
+          ),
+        );
+
+        await AppSession.clearPendingRegistration();
+
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (context) => const home(),
-          ),
+          MaterialPageRoute(builder: (context) => const home()),
         );
       } else {
         final profile = caregiverData(
@@ -70,35 +129,35 @@ class _selectRoleState extends State<selectRole> {
           phone: AuthController.normalizePhone(widget.phone),
         );
 
+        await CaregiverStore.save(profile);
+        await AppSession.clearPendingRegistration();
+
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => profilecaregiver_one(
-              profile: profile,
-            ),
+            builder: (context) => profilecaregiver_one(profile: profile),
           ),
         );
       }
     } catch (e) {
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-        ),
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
     } finally {
-      if (!mounted) return;
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F0D8),
+      backgroundColor: const Color(0xFFFDF0E8),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 25),
@@ -111,7 +170,7 @@ class _selectRoleState extends State<selectRole> {
                   height: 100,
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Color(0xFFD9E6FA),
+                    color: Color(0xFFFCFAFF),
                   ),
                   alignment: Alignment.center,
                   child: const Text("LOGO"),
@@ -119,14 +178,14 @@ class _selectRoleState extends State<selectRole> {
               ),
               const SizedBox(height: 80),
               GestureDetector(
-                onTap: () => _registerToBackend('client'),
+                onTap: isLoading ? null : () => _registerAndProceed('client'),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   decoration: BoxDecoration(
                     color: selectedRole == "client"
-                        ? const Color(0xFF8FBFFF)
-                        : const Color(0xFFD5E7FF),
+                        ? const Color(0xFFEE711E)
+                        : const Color(0xFFFCFAFF),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   alignment: Alignment.center,
@@ -140,14 +199,15 @@ class _selectRoleState extends State<selectRole> {
               ),
               const SizedBox(height: 30),
               GestureDetector(
-                onTap: () => _registerToBackend('caregiver'),
+                onTap:
+                    isLoading ? null : () => _registerAndProceed('caregiver'),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   decoration: BoxDecoration(
                     color: selectedRole == "caregiver"
-                        ? const Color(0xFF8FBFFF)
-                        : const Color(0xFFD5E7FF),
+                        ? const Color(0xFFEE711E)
+                        : const Color(0xFFFCFAFF),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   alignment: Alignment.center,
@@ -163,11 +223,7 @@ class _selectRoleState extends State<selectRole> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: ElevatedButton(
-                  onPressed: isLoading
-                      ? null
-                      : () {
-                          Navigator.pop(context);
-                        },
+                  onPressed: isLoading ? null : () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFF8B8E),
                     shape: RoundedRectangleBorder(

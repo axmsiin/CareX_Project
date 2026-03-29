@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:carex/User/HomePages/home.dart';
 import 'package:carex/User/HomePages/elderlyData.dart';
 import 'package:carex/User/HomePages/elderlyStore.dart';
+import 'package:carex/services/backend_data_service.dart';
 
 class question extends StatefulWidget {
   final ElderlyData elderlyData;
@@ -56,21 +57,47 @@ class _questionState extends State<question> {
   String? selectedAnswer;
   final List<String> answers = [];
 
-  void finishAndGoHome() {
+  int _calculateScore(List<String> selectedAnswers) {
+    final aCount = selectedAnswers.where((e) => e == 'A').length;
+    final bCount = selectedAnswers.where((e) => e == 'B').length;
+    if (aCount > bCount) return 1;
+    if (bCount > aCount) return 2;
+    return 3;
+  }
+
+  Future<void> finishAndGoHome() async {
     Navigator.of(context, rootNavigator: true).pop();
 
+    final score = _calculateScore(answers);
+    widget.elderlyData.score = score;
     widget.elderlyData.status = 'matching';
     widget.elderlyData.caregiver = '';
     widget.elderlyData.matchPercent = '';
 
-    final alreadyExists = ElderlyStore.elderlyList.any(
-      (item) => identical(item, widget.elderlyData),
-    );
-
-    if (!alreadyExists) {
-      ElderlyStore.elderlyList.add(widget.elderlyData);
+    final created = await BackendDataService.createElderlyProfile(widget.elderlyData);
+    if (created != null) {
+      created.score = score;
+      created.status = created.status.isEmpty ? 'matching' : created.status;
+      widget.elderlyData.elderlyId = created.elderlyId;
+      widget.elderlyData.status = created.status;
+      await ElderlyStore.upsert(created);
+    } else {
+      await ElderlyStore.upsert(widget.elderlyData);
     }
 
+    await BackendDataService.submitQuestionScore(
+      target: 'elderly',
+      score: score,
+      relatedId: created?.elderlyId ?? widget.elderlyData.elderlyId,
+      answers: answers,
+    );
+    await BackendDataService.requestMatch(
+      created ?? widget.elderlyData,
+      elderlyId: created?.elderlyId ?? widget.elderlyData.elderlyId,
+      questionScore: score,
+    );
+
+    if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => const home()),
@@ -89,9 +116,9 @@ class _questionState extends State<question> {
           insetPadding: const EdgeInsets.symmetric(horizontal: 38),
           child: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFF7F7F7),
+              color: const Color(0xFFFCFAFF),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF8FBFFF), width: 1.4),
+              border: Border.all(color: const Color(0xFFEE711E), width: 1.4),
             ),
             child: Stack(
               children: [
@@ -190,7 +217,7 @@ class _questionState extends State<question> {
         height: 155,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF8FBFFF) : const Color(0xFFD5E7FF),
+          color: isSelected ? const Color(0xFFEE711E) : const Color(0xFFFCFAFF),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
@@ -227,7 +254,7 @@ class _questionState extends State<question> {
     final current = questions[currentQuestionIndex];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFCE3),
+      backgroundColor: const Color(0xFFFDF0E8),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
@@ -271,7 +298,7 @@ class _questionState extends State<question> {
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD5E7FF),
+                  color: const Color(0xFFFCFAFF),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Text(
@@ -318,8 +345,8 @@ class _questionState extends State<question> {
                   child: ElevatedButton(
                     onPressed: selectedAnswer == null ? null : nextQuestion,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF8FBFFF),
-                      disabledBackgroundColor: const Color(0xFFD5E7FF),
+                      backgroundColor: const Color(0xFFEE711E),
+                      disabledBackgroundColor: const Color(0xFFFCFAFF),
                       elevation: 0,
                       padding: EdgeInsets.zero,
                       shape: RoundedRectangleBorder(
@@ -346,13 +373,13 @@ class _questionState extends State<question> {
       bottomNavigationBar: Container(
         height: 85,
         decoration: const BoxDecoration(
-          color: Color(0xFFD5E7FF),
+          color: Color(0xFFFCFAFF),
           borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: const [
-            Icon(Icons.home, size: 38, color: Color(0xFF8FBFFF)),
+            Icon(Icons.home, size: 38, color: Color(0xFFEE711E)),
             Icon(Icons.notifications, size: 38, color: Color(0xFF0D47A1)),
             Icon(Icons.account_circle, size: 42, color: Color(0xFF0D47A1)),
           ],

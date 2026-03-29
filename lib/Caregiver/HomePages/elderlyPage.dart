@@ -21,7 +21,7 @@ class elderlyPage extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFD5E7FF),
+        color: const Color(0xFFFCFAFF),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -74,7 +74,7 @@ class elderlyPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFCE3),
+      backgroundColor: const Color(0xFFFDF0E8),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
@@ -106,7 +106,7 @@ class elderlyPage extends StatelessWidget {
                 child: Icon(
                   Icons.account_circle_outlined,
                   size: 90,
-                  color: Color(0xFFD5E7FF),
+                  color: Color(0xFFFCFAFF),
                 ),
               ),
               const SizedBox(height: 18),
@@ -222,7 +222,7 @@ class elderlyPage extends StatelessWidget {
       bottomNavigationBar: Container(
         height: 85,
         decoration: const BoxDecoration(
-          color: Color(0xFFD5E7FF),
+          color: Color(0xFFFCFAFF),
           borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
         ),
         child: Row(
@@ -233,7 +233,7 @@ class elderlyPage extends StatelessWidget {
               icon: const Icon(
                 Icons.home,
                 size: 38,
-                color: Color(0xFF003F91),
+                color: Color(0xFFEE711E),
               ),
             ),
             IconButton(
@@ -241,7 +241,7 @@ class elderlyPage extends StatelessWidget {
               icon: const Icon(
                 Icons.notifications,
                 size: 38,
-                color: Color(0xFF8FBFFF),
+                color: Color(0xFFEE711E),
               ),
             ),
             IconButton(
@@ -249,7 +249,7 @@ class elderlyPage extends StatelessWidget {
               icon: const Icon(
                 Icons.account_circle,
                 size: 42,
-                color: Color(0xFF8FBFFF),
+                color: Color(0xFFEE711E),
               ),
             ),
           ],

@@ -8,7 +8,7 @@ class Home extends StatelessWidget {
 
   const Home({super.key, required this.profile});
 
-  static const bool testHasMatch = true;
+  static const bool testHasMatch = false;
 
   static ElderlyMatchData? confirmedElderly;
   static bool pendingNotificationActive = true;
@@ -80,7 +80,7 @@ class Home extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
         decoration: BoxDecoration(
-          color: const Color(0xFFD5E7FF),
+          color: const Color(0xFFFCFAFF),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
@@ -110,7 +110,7 @@ class Home extends StatelessWidget {
     final ElderlyMatchData? data = confirmedElderly;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFCE3),
+      backgroundColor: const Color(0xFFFDF0E8),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 25),
@@ -129,7 +129,7 @@ class Home extends StatelessWidget {
                   child: Icon(
                     Icons.account_circle_outlined,
                     size: 220,
-                    color: Color(0xFFD5E7FF),
+                    color: Color(0xFFFCFAFF),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -149,7 +149,7 @@ class Home extends StatelessWidget {
       bottomNavigationBar: Container(
         height: 85,
         decoration: const BoxDecoration(
-          color: Color(0xFFD5E7FF),
+          color: Color(0xFFFCFAFF),
           borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
         ),
         child: Row(
@@ -157,14 +157,14 @@ class Home extends StatelessWidget {
           children: [
             IconButton(
               onPressed: () {},
-              icon: const Icon(Icons.home, size: 34, color: Color(0xFF003F91)),
+              icon: const Icon(Icons.home, size: 34, color: Color(0xFFEE711E)),
             ),
             IconButton(
               onPressed: () => _goToNotification(context),
               icon: const Icon(
                 Icons.notifications,
                 size: 38,
-                color: Color(0xFF8FBFFF),
+                color: Color(0xFFEE711E),
               ),
             ),
             IconButton(
@@ -172,7 +172,7 @@ class Home extends StatelessWidget {
               icon: const Icon(
                 Icons.account_circle,
                 size: 42,
-                color: Color(0xFF8FBFFF),
+                color: Color(0xFFEE711E),
               ),
             ),
           ],
@@ -192,7 +192,7 @@ class ElderlyDetailPage extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFD5E7FF),
+        color: const Color(0xFFFCFAFF),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -215,7 +215,7 @@ class ElderlyDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFCE3),
+      backgroundColor: const Color(0xFFFDF0E8),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
@@ -247,7 +247,7 @@ class ElderlyDetailPage extends StatelessWidget {
                 child: Icon(
                   Icons.account_circle_outlined,
                   size: 90,
-                  color: Color(0xFFD5E7FF),
+                  color: Color(0xFFFCFAFF),
                 ),
               ),
               const SizedBox(height: 18),

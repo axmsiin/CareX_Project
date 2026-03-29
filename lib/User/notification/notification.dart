@@ -12,94 +12,7 @@ class notification extends StatefulWidget {
 }
 
 class _NotificationState extends State<notification> {
-  final List<Map<String, dynamic>> mockCaregivers = const [
-    {
-      'name': 'น.ส. พิมชนก',
-      'gender': 'หญิง',
-      'age': '34 ปี',
-      'province': 'บึงกาฬ',
-      'phone': '0984738701',
-      'experience': '5 ปี',
-      'rating': '5.0',
-      'reviewCount': '12',
-      'caregiverType': 'PN ผู้ช่วยพยาบาล',
-      'bio': 'ใจเย็น พูดสุภาพ ดูแลกิจวัตรประจำวันได้ดี',
-      'reviews': [
-        'สุภาพ พูดเพราะ และดูแลใส่ใจมาก',
-        'มาตรงเวลา ดูแลผู้สูงอายุได้ดี',
-        'พูดคุยอ่อนโยนและเข้ากับผู้สูงอายุได้ดีมาก',
-      ],
-      'matchPercent': 99,
-    },
-    {
-      'name': 'น.ส. ณัฐธิดา',
-      'gender': 'หญิง',
-      'age': '29 ปี',
-      'province': 'นนทบุรี',
-      'phone': '0956738701',
-      'experience': '4 ปี',
-      'rating': '4.9',
-      'reviewCount': '10',
-      'caregiverType': 'PN ผู้ช่วยพยาบาล',
-      'bio': 'ดูแลผู้สูงอายุได้ดี พูดคุยเก่ง พาไปโรงพยาบาลได้',
-      'reviews': [
-        'ดูแลดีและเข้ากับผู้สูงอายุได้ง่าย',
-        'เอาใจใส่เรื่องยาและอาหารมาก',
-      ],
-      'matchPercent': 96,
-    },
-    {
-      'name': 'น.ส. รัชนีกร',
-      'gender': 'หญิง',
-      'age': '41 ปี',
-      'province': 'ปทุมธานี',
-      'phone': '0894738701',
-      'experience': '7 ปี',
-      'rating': '4.8',
-      'reviewCount': '18',
-      'caregiverType': 'ผู้ช่วยดูแล',
-      'bio': 'ละเอียด รอบคอบ ถนัดดูแลผู้สูงอายุที่ต้องเฝ้าระวัง',
-      'reviews': [
-        'ดูเป็นมืออาชีพและเข้าใจผู้ป่วย',
-        'ครอบครัวสบายใจมากเมื่อให้ช่วยดูแล',
-      ],
-      'matchPercent': 92,
-    },
-    {
-      'name': 'น.ส. กนกวรรณ',
-      'gender': 'หญิง',
-      'age': '32 ปี',
-      'province': 'สมุทรปราการ',
-      'phone': '0812345678',
-      'experience': '3 ปี',
-      'rating': '4.7',
-      'reviewCount': '7',
-      'caregiverType': 'PN ผู้ช่วยพยาบาล',
-      'bio': 'อ่อนโยน มีความอดทนสูง เหมาะกับผู้สูงอายุที่ต้องการเพื่อนคุย',
-      'reviews': [
-        'ใจดีและนุ่มนวลมาก',
-        'สื่อสารกับครอบครัวดี',
-      ],
-      'matchPercent': 88,
-    },
-    {
-      'name': 'น.ส. ศศิธร',
-      'gender': 'หญิง',
-      'age': '38 ปี',
-      'province': 'กรุงเทพมหานคร',
-      'phone': '0823456789',
-      'experience': '6 ปี',
-      'rating': '4.6',
-      'reviewCount': '11',
-      'caregiverType': 'ผู้ช่วยดูแล',
-      'bio': 'มีประสบการณ์ดูแลผู้สูงอายุระยะยาวและผู้ป่วยติดบ้าน',
-      'reviews': [
-        'ดูแลสม่ำเสมอ',
-        'ตรงเวลาและมีความรับผิดชอบ',
-      ],
-      'matchPercent': 84,
-    },
-  ];
+  final List<Map<String, dynamic>> mockCaregivers = const [];
 
   List<int> get pendingIndexes {
     final indexes = <int>[];
@@ -196,6 +109,7 @@ class _NotificationState extends State<notification> {
     elderly.caregiverRating = candidate['rating'] as String;
     elderly.caregiverReviewCount = candidate['reviewCount'] as String;
     elderly.caregiverBio = candidate['bio'] as String;
+    await ElderlyStore.saveToCache();
 
     if (!mounted) return;
 
@@ -391,7 +305,7 @@ class _NotificationState extends State<notification> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFD5E7FF),
+        color: const Color(0xFFFCFAFF),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -526,7 +440,7 @@ class _NotificationState extends State<notification> {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFD5E7FF),
+        color: const Color(0xFFFCFAFF),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -558,7 +472,7 @@ class _NotificationState extends State<notification> {
     final elderlyIndex = currentPendingElderlyIndex;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFCE3),
+      backgroundColor: const Color(0xFFFDF0E8),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
@@ -580,7 +494,7 @@ class _NotificationState extends State<notification> {
                         child: Icon(
                           Icons.account_circle_outlined,
                           size: 160,
-                          color: Color(0xFFD5E7FF),
+                          color: Color(0xFFFCFAFF),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -629,7 +543,7 @@ class _NotificationState extends State<notification> {
       bottomNavigationBar: Container(
         height: 85,
         decoration: const BoxDecoration(
-          color: Color(0xFFD5E7FF),
+          color: Color(0xFFFCFAFF),
           borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
         ),
         child: Row(
@@ -649,7 +563,7 @@ class _NotificationState extends State<notification> {
               icon: const Icon(
                 Icons.notifications,
                 size: 38,
-                color: Color(0xFF8FBFFF),
+                color: Color(0xFFEE711E),
               ),
             ),
             IconButton(

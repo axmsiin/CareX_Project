@@ -52,7 +52,7 @@ class _addProfileElderly_fourState extends State<addProfileElderly_four> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFD5E7FF),
+          color: const Color(0xFFFCFAFF),
           borderRadius: BorderRadius.circular(14),
           border: selectedNeedsError != null
               ? Border.all(color: const Color(0xFFF04444))
@@ -63,7 +63,7 @@ class _addProfileElderly_fourState extends State<addProfileElderly_four> {
           children: [
             Icon(
               isSelected ? Icons.check_box : Icons.check_box_outline_blank,
-              color: const Color(0xFF003F91),
+              color: const Color(0xFFEE711E),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -115,7 +115,7 @@ class _addProfileElderly_fourState extends State<addProfileElderly_four> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFCE3),
+      backgroundColor: const Color(0xFFFDF0E8),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
@@ -155,7 +155,7 @@ class _addProfileElderly_fourState extends State<addProfileElderly_four> {
                   onPressed: goNext,
                   style: ElevatedButton.styleFrom(
                     elevation: 0,
-                    backgroundColor: const Color(0xFF8FBFFF),
+                    backgroundColor: const Color(0xFFEE711E),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),
@@ -174,7 +174,7 @@ class _addProfileElderly_fourState extends State<addProfileElderly_four> {
       bottomNavigationBar: Container(
         height: 85,
         decoration: const BoxDecoration(
-          color: Color(0xFFD5E7FF),
+          color: Color(0xFFFCFAFF),
           borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
         ),
         child: Row(
@@ -182,14 +182,14 @@ class _addProfileElderly_fourState extends State<addProfileElderly_four> {
           children: [
             IconButton(
               onPressed: () {},
-              icon: const Icon(Icons.home, size: 34, color: Color(0xFF8FBFFF)),
+              icon: const Icon(Icons.home, size: 34, color: Color(0xFFEE711E)),
             ),
             IconButton(
               onPressed: () {},
               icon: const Icon(
                 Icons.notifications,
                 size: 38,
-                color: Color(0xFF003F91),
+                color: Color(0xFFEE711E),
               ),
             ),
             IconButton(
@@ -197,7 +197,7 @@ class _addProfileElderly_fourState extends State<addProfileElderly_four> {
               icon: const Icon(
                 Icons.account_circle,
                 size: 42,
-                color: Color(0xFF003F91),
+                color: Color(0xFFEE711E),
               ),
             ),
           ],

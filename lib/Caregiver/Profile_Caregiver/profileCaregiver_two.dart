@@ -69,7 +69,8 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
     allDayAvailable = widget.profile.allDayAvailable;
 
     if (widget.profile.startTime.isNotEmpty) {
-      final parts = widget.profile.startTime.split('.');
+      final normalized = widget.profile.startTime.replaceAll('.', ':');
+      final parts = normalized.split(':');
       if (parts.length == 2) {
         startTime = TimeOfDay(
           hour: int.tryParse(parts[0]) ?? 9,
@@ -79,7 +80,8 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
     }
 
     if (widget.profile.endTime.isNotEmpty) {
-      final parts = widget.profile.endTime.split('.');
+      final normalized = widget.profile.endTime.replaceAll('.', ':');
+      final parts = normalized.split(':');
       if (parts.length == 2) {
         endTime = TimeOfDay(
           hour: int.tryParse(parts[0]) ?? 18,
@@ -97,13 +99,26 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
 
   String formatThaiDate(DateTime? date) {
     if (date == null) return 'วันที่จบการศึกษา';
-    return '${date.day} ${thaiMonths[date.month]} ${date.year}';
+    return '${date.day} ${thaiMonths[date.month]} ${date.year + 543}';
   }
 
   String formatTime(TimeOfDay time) {
     final hour = time.hour.toString().padLeft(2, '0');
     final minute = time.minute.toString().padLeft(2, '0');
-    return '$hour.$minute';
+    return '$hour:$minute';
+  }
+
+  List<Map<String, dynamic>> buildTimestampPayload() {
+    final effectiveStart = allDayAvailable ? '00:00' : formatTime(startTime);
+    final effectiveEnd = allDayAvailable ? '00:00' : formatTime(endTime);
+
+    return selectedDays.map((day) {
+      return {
+        'day': day,
+        'start_time': effectiveStart,
+        'end_time': effectiveEnd,
+      };
+    }).toList();
   }
 
   Future<void> pickTime({required bool isStartTime}) async {
@@ -177,7 +192,7 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
       padding:
           padding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFD5E7FF),
+        color: const Color(0xFFFCFAFF),
         borderRadius: BorderRadius.circular(14),
         border: hasError ? Border.all(color: const Color(0xFFF04444)) : null,
       ),
@@ -191,7 +206,7 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
       padding: const EdgeInsets.only(left: 12, top: 4),
       child: Text(
         error,
-        style: const TextStyle(color: const Color(0xFFF04444), fontSize: 12),
+        style: const TextStyle(color: Color(0xFFF04444), fontSize: 12),
       ),
     );
   }
@@ -216,7 +231,7 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFFD5E7FF),
+          color: const Color(0xFFFCFAFF),
           borderRadius: BorderRadius.circular(14),
           border: selectedDaysError != null
               ? Border.all(color: const Color(0xFFF04444))
@@ -226,7 +241,7 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
           children: [
             Icon(
               isSelected ? Icons.check_box : Icons.check_box_outline_blank,
-              color: const Color(0xFF003F91),
+              color: const Color(0xFFEE711E),
             ),
             const SizedBox(width: 10),
             Text(
@@ -253,7 +268,7 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFFD5E7FF),
+          color: const Color(0xFFFCFAFF),
           borderRadius: BorderRadius.circular(14),
           border: selectedDegreeError != null
               ? Border.all(color: const Color(0xFFF04444))
@@ -263,7 +278,7 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
           children: [
             Icon(
               isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-              color: const Color(0xFF003F91),
+              color: const Color(0xFFEE711E),
             ),
             const SizedBox(width: 10),
             Text(
@@ -317,8 +332,9 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
 
     widget.profile.availableDays = selectedDays.toList();
     widget.profile.allDayAvailable = allDayAvailable;
-    widget.profile.startTime = formatTime(startTime);
-    widget.profile.endTime = formatTime(endTime);
+    widget.profile.startTime =
+        allDayAvailable ? '00:00' : formatTime(startTime);
+    widget.profile.endTime = allDayAvailable ? '00:00' : formatTime(endTime);
     widget.profile.degree = selectedDegree ?? '';
     widget.profile.graduationDate = graduationDate;
 
@@ -333,7 +349,7 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFCE3),
+      backgroundColor: const Color(0xFFFDF0E8),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
@@ -390,7 +406,7 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
                             'สะดวกตลอดเวลา',
                             style: TextStyle(color: Color(0xFF564444)),
                           ),
-                          activeColor: const Color(0xFF003F91),
+                          activeColor: const Color(0xFFEE711E),
                         ),
                         if (!allDayAvailable)
                           Row(
@@ -498,7 +514,7 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
                   onPressed: goNext,
                   style: ElevatedButton.styleFrom(
                     elevation: 0,
-                    backgroundColor: const Color(0xFF8FBFFF),
+                    backgroundColor: const Color(0xFFEE711E),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),
@@ -517,16 +533,15 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
       bottomNavigationBar: Container(
         height: 80,
         decoration: const BoxDecoration(
-          color: Color(0xFFD5E7FF),
+          color: Color(0xFFFCFAFF),
           borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
         ),
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            Icon(Icons.home, size: 36, color: const Color(0xFF003F91)),
-            Icon(Icons.notifications, size: 34, color: const Color(0xFF003F91)),
-            Icon(Icons.account_circle,
-                size: 36, color: const Color(0xFF003F91)),
+            Icon(Icons.home, size: 36, color: Color(0xFFEE711E)),
+            Icon(Icons.notifications, size: 34, color: Color(0xFFEE711E)),
+            Icon(Icons.account_circle, size: 36, color: Color(0xFFEE711E)),
           ],
         ),
       ),

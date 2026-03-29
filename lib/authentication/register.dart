@@ -1,8 +1,9 @@
+import 'package:carex/User/Profile/userStore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:carex/role/selectRole.dart';
 import 'package:carex/authentication/login.dart';
-import 'package:carex/User/Profile/userStore.dart';
+import 'package:carex/User/Profile/userData.dart';
 import 'package:carex/services/app_session.dart';
 
 class Register extends StatefulWidget {
@@ -40,8 +41,7 @@ class _RegisterState extends State<Register> {
       firebaseUid: firebaseUid,
     );
 
-    UserStore.currentUser.fullName = name;
-    UserStore.currentUser.phone = phone;
+    await UserStore.save(UserData(fullName: name, phone: phone));
 
     if (!mounted) return;
 
@@ -158,7 +158,7 @@ class _RegisterState extends State<Register> {
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: const Color(0xFFFFFCE3),
+          backgroundColor: const Color(0xFFFDF0E8),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
@@ -177,7 +177,7 @@ class _RegisterState extends State<Register> {
               hintText: "OTP 6 หลัก",
               counterText: "",
               filled: true,
-              fillColor: const Color(0xFFD5E7FF),
+              fillColor: const Color(0xFFFCFAFF),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide.none,
@@ -197,7 +197,7 @@ class _RegisterState extends State<Register> {
             ElevatedButton(
               onPressed: verifyOtp,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF8FBFFF),
+                backgroundColor: const Color(0xFFEE711E),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -284,7 +284,7 @@ class _RegisterState extends State<Register> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFCE3),
+      backgroundColor: const Color(0xFFFDF0E8),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -297,7 +297,7 @@ class _RegisterState extends State<Register> {
                     width: 120,
                     height: 120,
                     decoration: const BoxDecoration(
-                      color: Color(0xFFD5E7FF),
+                      color: Color(0xFFFCFAFF),
                       shape: BoxShape.circle,
                     ),
                     child: const Center(
@@ -340,7 +340,7 @@ class _RegisterState extends State<Register> {
                     ),
                     errorText: nameError,
                     filled: true,
-                    fillColor: const Color(0xFFD5E7FF),
+                    fillColor: const Color(0xFFFCFAFF),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide.none,
@@ -388,7 +388,7 @@ class _RegisterState extends State<Register> {
                     ),
                     errorText: phoneError,
                     filled: true,
-                    fillColor: const Color(0xFFD5E7FF),
+                    fillColor: const Color(0xFFFCFAFF),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide.none,
@@ -412,7 +412,7 @@ class _RegisterState extends State<Register> {
                   child: ElevatedButton(
                     onPressed: isLoading ? null : register,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF8FBFFF),
+                      backgroundColor: const Color(0xFFEE711E),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
@@ -452,7 +452,7 @@ class _RegisterState extends State<Register> {
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF8FBFFF),
+                    backgroundColor: const Color(0xFFEE711E),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),

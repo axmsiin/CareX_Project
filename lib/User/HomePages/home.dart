@@ -15,6 +15,19 @@ class home extends StatefulWidget {
 
 class _homeState extends State<home> {
   String selectedFilter = 'ข้อมูลทั้งหมด';
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    await ElderlyStore.syncFromBackend();
+    if (!mounted) return;
+    setState(() => isLoading = false);
+  }
 
   final List<String> filterItems = const [
     'ข้อมูลทั้งหมด',
@@ -28,7 +41,7 @@ class _homeState extends State<home> {
       context,
       MaterialPageRoute(builder: (context) => const addProfileElderly_one()),
     );
-    setState(() {});
+    await _loadData();
   }
 
   Future<void> goToNotificationPage() async {
@@ -36,7 +49,7 @@ class _homeState extends State<home> {
       context,
       MaterialPageRoute(builder: (context) => const notification()),
     );
-    setState(() {});
+    await _loadData();
   }
 
   Future<void> goToProfilePage() async {
@@ -44,7 +57,7 @@ class _homeState extends State<home> {
       context,
       MaterialPageRoute(builder: (context) => const profileUser()),
     );
-    setState(() {});
+    await _loadData();
   }
 
   String getStatusText(ElderlyData elderly) {
@@ -117,14 +130,14 @@ class _homeState extends State<home> {
       width: 170,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFD5E7FF),
+        color: const Color(0xFFFCFAFF),
         borderRadius: BorderRadius.circular(14),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: selectedFilter,
           icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF0D47A1)),
-          dropdownColor: const Color(0xFFD5E7FF),
+          dropdownColor: const Color(0xFFFCFAFF),
           style: const TextStyle(fontSize: 15, color: Color(0xFF564444)),
           items: filterItems.map((item) {
             return DropdownMenuItem<String>(value: item, child: Text(item));
@@ -156,7 +169,7 @@ class _homeState extends State<home> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFD5E7FF),
+          color: const Color(0xFFFCFAFF),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
@@ -213,9 +226,11 @@ class _homeState extends State<home> {
     final filteredList = getFilteredList(elderlyList);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFCE3),
+      backgroundColor: const Color(0xFFFDF0E8),
       body: SafeArea(
-        child: Padding(
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Padding(
           padding: const EdgeInsets.symmetric(horizontal: 25),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,7 +249,7 @@ class _homeState extends State<home> {
                   child: Icon(
                     Icons.account_circle_outlined,
                     size: 220,
-                    color: Color(0xFFD5E7FF),
+                    color: Color(0xFFFCFAFF),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -269,7 +284,7 @@ class _homeState extends State<home> {
                     style: TextStyle(color: Color(0xFF564444), fontSize: 16),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF8FBFFF),
+                    backgroundColor: const Color(0xFFEE711E),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),
@@ -289,7 +304,7 @@ class _homeState extends State<home> {
       bottomNavigationBar: Container(
         height: 85,
         decoration: const BoxDecoration(
-          color: Color(0xFFD5E7FF),
+          color: Color(0xFFFCFAFF),
           borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
         ),
         child: Row(
@@ -297,7 +312,7 @@ class _homeState extends State<home> {
           children: [
             IconButton(
               onPressed: () {},
-              icon: const Icon(Icons.home, size: 38, color: Color(0xFF8FBFFF)),
+              icon: const Icon(Icons.home, size: 38, color: Color(0xFFEE711E)),
             ),
             IconButton(
               onPressed: goToNotificationPage,

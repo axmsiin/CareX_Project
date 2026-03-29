@@ -81,7 +81,7 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
 
   String formatDate(DateTime? date) {
     if (date == null) return 'วันเกิด';
-    return '${date.day} ${thaiMonths[date.month]} ${date.year}';
+    return '${date.day} ${thaiMonths[date.month]} ${date.year + 543}';
   }
 
   Future<void> pickBirthDate() async {
@@ -201,7 +201,7 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
       padding:
           padding ?? const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFD5E7FF),
+        color: const Color(0xFFFCFAFF),
         borderRadius: BorderRadius.circular(12),
         border: hasError ? Border.all(color: const Color(0xFFF04444)) : null,
       ),
@@ -306,7 +306,7 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFFD5E7FF),
+                color: const Color(0xFFFCFAFF),
                 borderRadius: BorderRadius.circular(12),
                 border: diseaseError != null
                     ? Border.all(color: const Color(0xFFF04444))
@@ -445,7 +445,7 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFCE3),
+      backgroundColor: const Color(0xFFFDF0E8),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
@@ -470,7 +470,7 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
                 child: Icon(
                   Icons.account_circle_outlined,
                   size: 110,
-                  color: Color(0xFFD5E7FF),
+                  color: Color(0xFFFCFAFF),
                 ),
               ),
               const SizedBox(height: 20),
@@ -597,7 +597,7 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFD5E7FF),
+                            color: const Color(0xFFFCFAFF),
                             borderRadius: BorderRadius.circular(12),
                             border: genderError != null
                                 ? Border.all(color: const Color(0xFFF04444))
@@ -688,7 +688,7 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
                   onPressed: goNext,
                   style: ElevatedButton.styleFrom(
                     elevation: 0,
-                    backgroundColor: const Color(0xFF8FBFFF),
+                    backgroundColor: const Color(0xFFEE711E),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),
@@ -707,7 +707,7 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
       bottomNavigationBar: Container(
         height: 85,
         decoration: const BoxDecoration(
-          color: Color(0xFFD5E7FF),
+          color: Color(0xFFFCFAFF),
           borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
         ),
         child: Row(
@@ -715,14 +715,14 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
           children: [
             IconButton(
               onPressed: () {},
-              icon: const Icon(Icons.home, size: 34, color: Color(0xFF8FBFFF)),
+              icon: const Icon(Icons.home, size: 34, color: Color(0xFFEE711E)),
             ),
             IconButton(
               onPressed: () {},
               icon: const Icon(
                 Icons.notifications,
                 size: 38,
-                color: Color(0xFF003F91),
+                color: Color(0xFFEE711E),
               ),
             ),
             IconButton(
@@ -730,7 +730,7 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
               icon: const Icon(
                 Icons.account_circle,
                 size: 42,
-                color: Color(0xFF003F91),
+                color: Color(0xFFEE711E),
               ),
             ),
           ],

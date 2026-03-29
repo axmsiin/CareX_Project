@@ -7,10 +7,13 @@ import 'package:carex/services/auth_service.dart';
 class LoginResult {
   final bool success;
   final String message;
-  final int? userId;
+  final String? userId;
   final String? role;
   final String? userName;
   final String? token;
+  final String? clientId;
+  final String? caregiverId;
+  final int? caregiverScore;
   final bool isRegistered;
 
   LoginResult({
@@ -20,6 +23,9 @@ class LoginResult {
     this.role,
     this.userName,
     this.token,
+    this.clientId,
+    this.caregiverId,
+    this.caregiverScore,
     this.isRegistered = true,
   });
 }
@@ -46,27 +52,15 @@ class AuthController {
     final normalizedPhone = normalizePhone(phone);
 
     final request = RegisterRequest(
-      phone: normalizedPhone,
-      role: role,
+      tel: normalizedPhone,
       firebaseUid: firebaseUid,
       userName: userName,
     );
 
     final serviceResult = await AuthService.register(request);
 
-    if (!serviceResult.success) {
-      return AuthResult(
-        success: false,
-        message: serviceResult.message,
-        userId: serviceResult.userId,
-        token: serviceResult.token,
-        role: serviceResult.role,
-        userName: serviceResult.userName,
-      );
-    }
-
     return AuthResult(
-      success: true,
+      success: serviceResult.success,
       message: serviceResult.message,
       userId: serviceResult.userId,
       token: serviceResult.token,
@@ -79,13 +73,9 @@ class AuthController {
     required String firebaseUid,
     String? phone,
   }) async {
-    print('AuthController: loginUser called for firebaseUid=$firebaseUid phone=$phone');
-
     final serviceResult = await AuthService.login(
       LoginRequest(firebaseUid: firebaseUid),
     );
-
-    print('AuthController: AuthService.login returned success=${serviceResult.success} message=${serviceResult.message} userId=${serviceResult.userId} role=${serviceResult.role}');
 
     if (!serviceResult.success) {
       return LoginResult(
@@ -99,6 +89,16 @@ class AuthController {
       );
     }
 
+    // แยก role_id ไปเก็บตาม role ที่เหมาะสม
+    String? clientId;
+    String? caregiverId;
+    
+    if (serviceResult.role == 'client') {
+      clientId = serviceResult.roleId;
+    } else if (serviceResult.role == 'caregiver') {
+      caregiverId = serviceResult.roleId;
+    }
+
     return LoginResult(
       success: true,
       message: serviceResult.message,
@@ -106,6 +106,9 @@ class AuthController {
       role: serviceResult.role,
       userName: serviceResult.userName,
       token: serviceResult.token,
+      clientId: clientId,
+      caregiverId: caregiverId,
+      caregiverScore: null,
       isRegistered: true,
     );
   }

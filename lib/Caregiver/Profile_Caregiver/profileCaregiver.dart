@@ -1,9 +1,11 @@
-import 'package:carex/Caregiver/notification/notification.dart';
-import 'package:flutter/material.dart';
-import 'package:carex/Caregiver/Profile_Caregiver/caregiverData.dart';
-import 'package:carex/Caregiver/Profile_Caregiver/editProfileCaregiver.dart';
 import 'package:carex/Caregiver/HomePages/home.dart';
+import 'package:carex/Caregiver/Profile_Caregiver/caregiverData.dart';
+import 'package:carex/Caregiver/Profile_Caregiver/caregiver_store.dart';
+import 'package:carex/Caregiver/Profile_Caregiver/editProfileCaregiver.dart';
+import 'package:carex/Caregiver/notification/notification.dart';
 import 'package:carex/authentication/login.dart';
+import 'package:carex/services/app_session.dart';
+import 'package:flutter/material.dart';
 
 class profileCaregiver extends StatefulWidget {
   final caregiverData profile;
@@ -15,6 +17,9 @@ class profileCaregiver extends StatefulWidget {
 }
 
 class _ProfileCaregiverState extends State<profileCaregiver> {
+  bool isLoading = true;
+  caregiverData _profile = caregiverData();
+
   final List<String> thaiMonths = const [
     '',
     'มกราคม',
@@ -31,9 +36,60 @@ class _ProfileCaregiverState extends State<profileCaregiver> {
     'ธันวาคม',
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _profile = widget.profile;
+    _loadProfile();
+  }
+
+  bool _hasMeaningfulProfileData(caregiverData profile) {
+    return (profile.caregiverId != null) ||
+        profile.fullName.trim().isNotEmpty ||
+        profile.phone.trim().isNotEmpty ||
+        profile.address.trim().isNotEmpty ||
+        profile.province.trim().isNotEmpty ||
+        profile.nickName.trim().isNotEmpty ||
+        profile.degree.trim().isNotEmpty;
+  }
+
+  caregiverData _pickBestProfile() {
+    final storeProfile = CaregiverStore.currentProfile;
+    final widgetProfile = widget.profile;
+
+    if (_hasMeaningfulProfileData(storeProfile)) {
+      return storeProfile;
+    }
+
+    if (_hasMeaningfulProfileData(widgetProfile)) {
+      return widgetProfile;
+    }
+
+    return storeProfile;
+  }
+
+  Future<void> _loadProfile() async {
+    if (mounted) {
+      setState(() {
+        isLoading = true;
+      });
+    }
+
+    try {
+      await CaregiverStore.syncFromBackend();
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    setState(() {
+      _profile = _pickBestProfile();
+      isLoading = false;
+    });
+  }
+
   String formatThaiDate(DateTime? date) {
     if (date == null) return '-';
-    return '${date.day} ${thaiMonths[date.month]} ${date.year}';
+    return '${date.day} ${thaiMonths[date.month]} ${date.year + 543}';
   }
 
   Widget buildBox(String text, {double? width}) {
@@ -41,15 +97,12 @@ class _ProfileCaregiverState extends State<profileCaregiver> {
       width: width,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFD5E7FF),
+        color: const Color(0xFFFCFAFF),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        text,
-        style: const TextStyle(
-          color: Color(0xFF564444),
-          fontSize: 14,
-        ),
+        text.trim().isEmpty ? '-' : text,
+        style: const TextStyle(color: Color(0xFF564444), fontSize: 14),
       ),
     );
   }
@@ -59,19 +112,16 @@ class _ProfileCaregiverState extends State<profileCaregiver> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFD5E7FF),
+        color: const Color(0xFFFCFAFF),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          const Icon(Icons.check_box, color: Color(0xFF003F91)),
+          const Icon(Icons.check_box, color: Color(0xFFEE711E)),
           const SizedBox(width: 8),
           Text(
             day,
-            style: const TextStyle(
-              color: Color(0xFF564444),
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: Color(0xFF564444), fontSize: 14),
           ),
         ],
       ),
@@ -82,22 +132,23 @@ class _ProfileCaregiverState extends State<profileCaregiver> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => editprofileCaregiver(profile: widget.profile),
+        builder: (context) => editprofileCaregiver(profile: _profile),
       ),
     );
 
     if (result == true) {
-      setState(() {});
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('บันทึกข้อมูลเรียบร้อย')));
+      await _loadProfile();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('บันทึกข้อมูลเรียบร้อย')),
+      );
     }
   }
 
   void goToHomePage() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => Home(profile: widget.profile)),
+      MaterialPageRoute(builder: (context) => Home(profile: _profile)),
     );
   }
 
@@ -105,15 +156,16 @@ class _ProfileCaregiverState extends State<profileCaregiver> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => notification(
-          profile: widget.profile,
-          startWithMatch: false,
-        ),
+        builder: (context) =>
+            notification(profile: _profile, startWithMatch: false),
       ),
     );
   }
 
-  void logout() {
+  Future<void> logout() async {
+    await AppSession.clearSession();
+    await CaregiverStore.clear();
+    if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => const Login()),
@@ -123,9 +175,10 @@ class _ProfileCaregiverState extends State<profileCaregiver> {
 
   @override
   Widget build(BuildContext context) {
-    final timeText = widget.profile.allDayAvailable
+    final profile = _profile;
+    final timeText = profile.allDayAvailable
         ? 'เวลา : สะดวกตลอดเวลา'
-        : 'เวลา : ${widget.profile.startTime} - ${widget.profile.endTime} น.';
+        : 'เวลา : ${profile.startTime} - ${profile.endTime} น.';
 
     final guarantor = notification.confirmedGuarantor;
     final bool hasGuarantor = guarantor != null &&
@@ -134,180 +187,162 @@ class _ProfileCaregiverState extends State<profileCaregiver> {
         guarantor.relation.trim().isNotEmpty;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFCE3),
+      backgroundColor: const Color(0xFFFDF0E8),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextButton(
-                      onPressed: goToEditPage,
-                      child: const Text(
-                        'แก้ไข',
-                        style: TextStyle(
-                          color: Color(0xFF564444),
-                          decoration: TextDecoration.underline,
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: _loadProfile,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TextButton(
+                              onPressed: goToEditPage,
+                              child: const Text(
+                                'แก้ไข',
+                                style: TextStyle(
+                                  color: Color(0xFF564444),
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            TextButton(
+                              onPressed: logout,
+                              child: const Text(
+                                'ออกจากระบบ',
+                                style: TextStyle(
+                                  color: Color(0xFF564444),
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    TextButton(
-                      onPressed: logout,
-                      child: const Text(
-                        'ออกจากระบบ',
-                        style: TextStyle(
-                          color: Color(0xFF564444),
-                          decoration: TextDecoration.underline,
+                      const SizedBox(height: 8),
+                      const Center(
+                        child: Icon(
+                          Icons.account_circle_outlined,
+                          size: 100,
+                          color: Color(0xFFFCFAFF),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Center(
-                child: Icon(
-                  Icons.account_circle_outlined,
-                  size: 100,
-                  color: Color(0xFFD5E7FF),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'ข้อมูลสุขภาพพื้นฐาน',
-                style: TextStyle(fontSize: 18, color: Color(0xFF564444)),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(child: buildBox(widget.profile.fullName)),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: buildBox(
-                      widget.profile.nickName.isEmpty
-                          ? 'ชื่อ : -'
-                          : widget.profile.nickName,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: buildBox(
-                      widget.profile.phone.isEmpty ? '-' : widget.profile.phone,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: buildBox(
-                      formatThaiDate(widget.profile.birthDate),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: buildBox(
-                      widget.profile.gender.isEmpty
-                          ? 'เพศ'
-                          : widget.profile.gender,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: buildBox('น้ำหนัก : ${widget.profile.weight}'),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: buildBox('ส่วนสูง : ${widget.profile.height}'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'ที่อยู่',
-                style: TextStyle(fontSize: 16, color: Color(0xFF564444)),
-              ),
-              const SizedBox(height: 10),
-              buildBox(
-                widget.profile.address.isEmpty ? '-' : widget.profile.address,
-              ),
-              if (hasGuarantor) ...[
-                const SizedBox(height: 18),
-                const Text(
-                  'ข้อมูลผู้รับรอง',
-                  style: TextStyle(fontSize: 16, color: Color(0xFF564444)),
-                ),
-                const SizedBox(height: 10),
-                buildBox('ชื่อผู้รับรอง : ${guarantor.name}'),
-                const SizedBox(height: 10),
-                buildBox('เบอร์ผู้รับรอง : ${guarantor.phone}'),
-                const SizedBox(height: 10),
-                buildBox('ความสัมพันธ์ : ${guarantor.relation}'),
-              ],
-              const SizedBox(height: 18),
-              const Text(
-                'ระยะทางสะดวก',
-                style: TextStyle(fontSize: 16, color: Color(0xFF564444)),
-              ),
-              const SizedBox(height: 10),
-              buildBox(
-                widget.profile.province.isEmpty
-                    ? 'จังหวัด : -'
-                    : 'จังหวัด : ${widget.profile.province}',
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'วันและเวลาสะดวก',
-                style: TextStyle(fontSize: 16, color: Color(0xFF564444)),
-              ),
-              const SizedBox(height: 10),
-              if (widget.profile.availableDays.isEmpty)
-                buildBox('-')
-              else
-                ...widget.profile.availableDays.map(
-                  (day) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: buildSelectedDayBox(day),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'ข้อมูลสุขภาพพื้นฐาน',
+                        style:
+                            TextStyle(fontSize: 18, color: Color(0xFF564444)),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(child: buildBox(profile.fullName)),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: buildBox(
+                              profile.nickName.isEmpty
+                                  ? 'ชื่อ : -'
+                                  : profile.nickName,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(child: buildBox(profile.phone)),
+                          const SizedBox(width: 10),
+                          Expanded(
+                              child:
+                                  buildBox(formatThaiDate(profile.birthDate))),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: buildBox(
+                              profile.gender.isEmpty ? '-' : profile.gender,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                              child: buildBox('น้ำหนัก ${profile.weight} กก.')),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      buildBox('ส่วนสูง ${profile.height} ซม.'),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'ข้อมูลตารางเวลา',
+                        style:
+                            TextStyle(fontSize: 18, color: Color(0xFF564444)),
+                      ),
+                      const SizedBox(height: 14),
+                      if (profile.availableDays.isEmpty)
+                        buildBox('-')
+                      else
+                        ...profile.availableDays.map(buildSelectedDayBox),
+                      const SizedBox(height: 10),
+                      buildBox(timeText),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'ที่อยู่ปัจจุบัน',
+                        style:
+                            TextStyle(fontSize: 18, color: Color(0xFF564444)),
+                      ),
+                      const SizedBox(height: 14),
+                      buildBox(profile.address),
+                      const SizedBox(height: 10),
+                      buildBox(profile.province),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'ข้อมูลการศึกษา/ใบรับรอง',
+                        style:
+                            TextStyle(fontSize: 18, color: Color(0xFF564444)),
+                      ),
+                      const SizedBox(height: 14),
+                      buildBox(profile.degree),
+                      const SizedBox(height: 10),
+                      buildBox(formatThaiDate(profile.graduationDate)),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'ข้อมูลผู้ค้ำประกัน',
+                        style:
+                            TextStyle(fontSize: 18, color: Color(0xFF564444)),
+                      ),
+                      const SizedBox(height: 14),
+                      if (hasGuarantor) ...[
+                        buildBox(guarantor.name),
+                        const SizedBox(height: 10),
+                        buildBox(guarantor.phone),
+                        const SizedBox(height: 10),
+                        buildBox(guarantor.relation),
+                      ] else
+                        buildBox('-'),
+                      const SizedBox(height: 20),
+                    ],
                   ),
                 ),
-              buildBox(timeText),
-              const SizedBox(height: 18),
-              const Text(
-                'วุฒิประกาศนียบัตร',
-                style: TextStyle(fontSize: 16, color: Color(0xFF564444)),
               ),
-              const SizedBox(height: 10),
-              buildBox(
-                widget.profile.degree.isEmpty ? '-' : widget.profile.degree,
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'วันที่จบการศึกษา',
-                style: TextStyle(fontSize: 16, color: Color(0xFF564444)),
-              ),
-              const SizedBox(height: 10),
-              buildBox(formatThaiDate(widget.profile.graduationDate)),
-              const SizedBox(height: 30),
-            ],
-          ),
-        ),
       ),
       bottomNavigationBar: Container(
-        height: 80,
+        height: 85,
         decoration: const BoxDecoration(
-          color: Color(0xFFD5E7FF),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+          color: Color(0xFFFCFAFF),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -316,24 +351,24 @@ class _ProfileCaregiverState extends State<profileCaregiver> {
               onPressed: goToHomePage,
               icon: const Icon(
                 Icons.home,
-                size: 36,
-                color: Color(0xFF8FBFFF),
+                size: 38,
+                color: Color(0xFFEE711E),
               ),
             ),
             IconButton(
               onPressed: goToNotificationPage,
               icon: const Icon(
                 Icons.notifications,
-                size: 36,
-                color: Color(0xFF8FBFFF),
+                size: 38,
+                color: Color(0xFFEE711E),
               ),
             ),
             IconButton(
               onPressed: () {},
               icon: const Icon(
                 Icons.account_circle,
-                size: 40,
-                color: Color(0xFF003F91),
+                size: 42,
+                color: Color(0xFFEE711E),
               ),
             ),
           ],

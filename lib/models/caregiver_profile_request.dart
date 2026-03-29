@@ -1,5 +1,5 @@
 class CaregiverProfileRequest {
-  final int userId;
+  final String? userId;
   final String fullname;
   final String alias;
   final String tel;
@@ -7,11 +7,13 @@ class CaregiverProfileRequest {
   final int weight;
   final int height;
   final String address;
+  final double latitude;
+  final double longitude;
   final String province;
   final String birthday;
 
   CaregiverProfileRequest({
-    required this.userId,
+    this.userId,
     required this.fullname,
     required this.alias,
     required this.tel,
@@ -19,13 +21,15 @@ class CaregiverProfileRequest {
     required this.weight,
     required this.height,
     required this.address,
+    this.latitude = 0.0,
+    this.longitude = 0.0,
     required this.province,
     required this.birthday,
   });
 
   Map<String, dynamic> toJson() {
     return {
-      'user_id': userId,
+      if (userId != null && userId!.isNotEmpty) 'user_id': userId,
       'fullname': fullname,
       'alias': alias,
       'tel': tel,
@@ -33,6 +37,8 @@ class CaregiverProfileRequest {
       'weight': weight,
       'height': height,
       'address': address,
+      'latitude': latitude,
+      'longitude': longitude,
       'province': province,
       'birthday': birthday,
     };

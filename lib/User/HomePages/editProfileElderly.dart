@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:carex/User/HomePages/elderlyData.dart';
 import 'package:carex/User/HomePages/elderlyStore.dart';
 import 'package:carex/map.dart';
+import 'package:carex/services/backend_data_service.dart';
 
 class editProfileElderly extends StatefulWidget {
   final ElderlyData elderlyData;
@@ -358,7 +359,7 @@ class _EditProfileElderlyState extends State<editProfileElderly> {
 
   String formatThaiDate(DateTime? date) {
     if (date == null) return '-';
-    return '${date.day} ${thaiMonths[date.month]} ${date.year}';
+    return '${date.day} ${thaiMonths[date.month]} ${date.year + 543}';
   }
 
   String formatTime(TimeOfDay time) {
@@ -377,7 +378,7 @@ class _EditProfileElderlyState extends State<editProfileElderly> {
       padding:
           padding ?? const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFD5E7FF),
+        color: const Color(0xFFFCFAFF),
         borderRadius: BorderRadius.circular(14),
         border: hasError ? Border.all(color: const Color(0xFFF04444)) : null,
       ),
@@ -492,7 +493,7 @@ class _EditProfileElderlyState extends State<editProfileElderly> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFD5E7FF),
+          color: const Color(0xFFFCFAFF),
           borderRadius: BorderRadius.circular(14),
           border: selectedNeedsError != null
               ? Border.all(color: const Color(0xFFF04444))
@@ -503,7 +504,7 @@ class _EditProfileElderlyState extends State<editProfileElderly> {
           children: [
             Icon(
               isSelected ? Icons.check_box : Icons.check_box_outline_blank,
-              color: const Color(0xFF003F91),
+              color: const Color(0xFFEE711E),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -547,7 +548,7 @@ class _EditProfileElderlyState extends State<editProfileElderly> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFD5E7FF),
+          color: const Color(0xFFFCFAFF),
           borderRadius: BorderRadius.circular(14),
           border: customDaysError != null
               ? Border.all(color: const Color(0xFFF04444))
@@ -557,7 +558,7 @@ class _EditProfileElderlyState extends State<editProfileElderly> {
           children: [
             Icon(
               isSelected ? Icons.check_box : Icons.check_box_outline_blank,
-              color: const Color(0xFF003F91),
+              color: const Color(0xFFEE711E),
             ),
             const SizedBox(width: 10),
             Text(
@@ -943,7 +944,7 @@ class _EditProfileElderlyState extends State<editProfileElderly> {
     return yearParts.join(', ');
   }
 
-  void saveProfile() {
+  Future<void> saveProfile() async {
     FocusScope.of(context).unfocus();
 
     setState(() {
@@ -1076,8 +1077,18 @@ class _EditProfileElderlyState extends State<editProfileElderly> {
       noneValue: 'ไม่มี',
     );
 
-    ElderlyStore.elderlyList[widget.elderlyIndex] = widget.elderlyData;
+    final ok = await BackendDataService.updateElderlyProfile(widget.elderlyData);
+    if (!ok) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('อัปเดตข้อมูลผู้สูงอายุลงฐานข้อมูลไม่สำเร็จ')),
+      );
+      return;
+    }
 
+    await ElderlyStore.syncFromBackend();
+
+    if (!mounted) return;
     Navigator.pop(context, true);
   }
 
@@ -1086,7 +1097,7 @@ class _EditProfileElderlyState extends State<editProfileElderly> {
     final workingDays = calculateWorkingDays();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFCE3),
+      backgroundColor: const Color(0xFFFDF0E8),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
@@ -1109,7 +1120,7 @@ class _EditProfileElderlyState extends State<editProfileElderly> {
                 child: Icon(
                   Icons.account_circle_outlined,
                   size: 110,
-                  color: Color(0xFFD5E7FF),
+                  color: Color(0xFFFCFAFF),
                 ),
               ),
               const SizedBox(height: 20),
@@ -1488,7 +1499,7 @@ class _EditProfileElderlyState extends State<editProfileElderly> {
                       vertical: 14,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFD5E7FF),
+                      color: const Color(0xFFFCFAFF),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: const Text(
@@ -1618,7 +1629,7 @@ class _EditProfileElderlyState extends State<editProfileElderly> {
                   onPressed: saveProfile,
                   style: ElevatedButton.styleFrom(
                     elevation: 0,
-                    backgroundColor: const Color(0xFF8FBFFF),
+                    backgroundColor: const Color(0xFFEE711E),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),

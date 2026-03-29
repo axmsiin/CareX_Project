@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:carex/Caregiver/HomePages/home.dart';
-import 'package:carex/Caregiver/Profile_Caregiver/caregiverData.dart';
+import 'package:carex/Caregiver/Profile_Caregiver/caregiver_store.dart';
+import 'package:carex/Caregiver/Profile_Caregiver/question.dart'
+    as caregiver_question;
 import 'package:carex/authentication/register.dart';
 import 'package:carex/controllers/auth_controller.dart';
 import 'package:carex/services/app_session.dart';
+import 'package:carex/User/Profile/userStore.dart';
+import 'package:carex/User/HomePages/elderlyStore.dart';
 import 'package:carex/User/HomePages/home.dart' as user_home;
 
 class Login extends StatefulWidget {
@@ -29,35 +33,95 @@ class _LoginState extends State<Login> {
     String role,
     String phone, {
     String? userName,
+    int? caregiverScore,
   }) async {
     if (!mounted) return;
 
     if (role == 'client') {
+      await UserStore.syncFromBackend();
+      await ElderlyStore.syncFromBackend();
+
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(
-          builder: (context) => const user_home.home(),
-        ),
+        MaterialPageRoute(builder: (context) => const user_home.home()),
         (route) => false,
       );
+
+      final user = UserStore.currentUser;
+      if (user.fullName.trim().isEmpty) {
+        _showIncompleteProfilePopup(
+          'ยังไม่ได้กรอกข้อมูลในหน้า Profile กรุณากรอกข้อมูลเพื่อใช้งานระบบ',
+        );
+      }
     } else if (role == 'caregiver') {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (context) => Home(
-            profile: caregiverData(
-              fullName: userName ?? '',
-              phone: phone,
-            ),
+      await CaregiverStore.syncFromBackend();
+      final profile = CaregiverStore.currentProfile;
+
+      final effectiveScore = profile.score ?? caregiverScore;
+
+      if (effectiveScore == null) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => caregiver_question.question(profile: profile),
           ),
-        ),
-        (route) => false,
-      );
+          (route) => false,
+        );
+      } else {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => Home(profile: profile)),
+          (route) => false,
+        );
+
+        if (profile.fullName.trim().isEmpty) {
+          _showIncompleteProfilePopup(
+            'ยังไม่ได้กรอกข้อมูลในหน้า Profile ข้อมูลของคุณจะถูกใช้ในการ Matching กรุณากรอกข้อมูลให้ครบ',
+          );
+        }
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ไม่พบบทบาทผู้ใช้ในระบบ')),
+        const SnackBar(content: Text('ไม่พบ role ของผู้ใช้')),
       );
     }
+  }
+
+  void _showIncompleteProfilePopup(String message) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFFFCFAFF),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.info_outline, color: Color(0xFFEE711E)),
+              SizedBox(width: 8),
+              Text(
+                'แจ้งเตือน',
+                style: TextStyle(color: Color(0xFFEE711E), fontSize: 16),
+              ),
+            ],
+          ),
+          content: Text(
+            message,
+            style: const TextStyle(color: Color(0xFFEE711E), fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text(
+                'ตกลง',
+                style: TextStyle(color: Color(0xFFEE711E)),
+              ),
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   Future<void> _completeLogin() async {
@@ -65,7 +129,9 @@ class _LoginState extends State<Login> {
     _hasCompletedLogin = true;
 
     final firebaseUser = FirebaseAuth.instance.currentUser;
-    debugPrint('Login: _completeLogin() started, firebaseUser=${firebaseUser?.uid}');
+    debugPrint(
+        'Login: _completeLogin() started, firebaseUser=${firebaseUser?.uid}');
+
     if (firebaseUser == null) {
       _hasCompletedLogin = false;
       setState(() {
@@ -76,21 +142,28 @@ class _LoginState extends State<Login> {
     }
 
     try {
-      debugPrint('Login: calling AuthController.loginUser(firebaseUid=${firebaseUser.uid})');
+      debugPrint(
+          'Login: calling AuthController.loginUser(firebaseUid=${firebaseUser.uid})');
+
       final result = await AuthController.loginUser(
         firebaseUid: firebaseUser.uid,
         phone: AuthController.normalizePhone(phoneController.text.trim()),
       );
 
-      debugPrint('Login: AuthController.loginUser returned success=${result.success} role=${result.role} userId=${result.userId} token=${result.token}');
+      debugPrint(
+        'Login: AuthController.loginUser returned '
+        'success=${result.success} role=${result.role} userId=${result.userId} token=${result.token}',
+      );
 
       if (!result.success) {
         _hasCompletedLogin = false;
+
         setState(() {
           isLoading = false;
         });
 
         if (!mounted) return;
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(result.message)),
         );
@@ -104,28 +177,37 @@ class _LoginState extends State<Login> {
 
       final role = result.role;
       final userName = result.userName;
+      final userId = result.userId;
+      final token = result.token;
+      final clientId = result.clientId;
+      final caregiverId = result.caregiverId;
 
       if (role == null || role.isEmpty) {
-        _hasCompletedLogin = false;
-        setState(() {
-          isLoading = false;
-        });
+        throw Exception('ระบบไม่ได้ส่ง role กลับมาหลังเข้าสู่ระบบ');
+      }
 
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('ไม่พบ role ของผู้ใช้')),
-        );
-        return;
+      if (userId == null || userId.isEmpty) {
+        throw Exception('ระบบไม่ได้ส่ง user_id กลับมาหลังเข้าสู่ระบบ');
+      }
+
+      if (token == null || token.isEmpty) {
+        throw Exception('ระบบไม่ได้ส่ง token กลับมาหลังเข้าสู่ระบบ');
       }
 
       await AppSession.saveUserSession(
-        userId: result.userId,
+        userId: userId,
         role: role,
         phone: AuthController.normalizePhone(phoneController.text.trim()),
         userName: userName ?? '',
         firebaseUid: firebaseUser.uid,
-        token: result.token,
+        token: token,
+        clientId: clientId,
+        caregiverId: caregiverId,
       );
+
+      debugPrint('✅ Login success: role=$role, clientId=$clientId, caregiverId=$caregiverId');
+
+      if (!mounted) return;
 
       setState(() {
         isLoading = false;
@@ -135,16 +217,23 @@ class _LoginState extends State<Login> {
         role,
         AuthController.normalizePhone(phoneController.text.trim()),
         userName: userName,
+        caregiverScore: result.caregiverScore,
       );
     } catch (e) {
       _hasCompletedLogin = false;
-      setState(() {
-        isLoading = false;
-      });
+
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
 
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('เข้าสู่ระบบไม่สำเร็จ: $e')),
+        SnackBar(
+            content: Text(
+                'เข้าสู่ระบบไม่สำเร็จ: ${e.toString().replaceFirst('Exception: ', '')}')),
       );
     }
   }
@@ -182,7 +271,9 @@ class _LoginState extends State<Login> {
     try {
       final auth = FirebaseAuth.instance;
 
-      debugPrint('Login: calling FirebaseAuth.verifyPhoneNumber for +66${phone.substring(1)}');
+      debugPrint(
+        'Login: calling FirebaseAuth.verifyPhoneNumber for +66${phone.substring(1)}',
+      );
 
       await auth.verifyPhoneNumber(
         phoneNumber: "+66${phone.substring(1)}",
@@ -208,7 +299,8 @@ class _LoginState extends State<Login> {
           }
         },
         verificationFailed: (FirebaseAuthException e) {
-          debugPrint('Login: verificationFailed code=${e.code} message=${e.message}');
+          debugPrint(
+              'Login: verificationFailed code=${e.code} message=${e.message}');
           if (!mounted) return;
 
           setState(() {
@@ -217,7 +309,8 @@ class _LoginState extends State<Login> {
           });
         },
         codeSent: (String verificationId, int? resendToken) {
-          debugPrint('Login: codeSent, verificationId=$verificationId resendToken=$resendToken');
+          debugPrint(
+              'Login: codeSent, verificationId=$verificationId resendToken=$resendToken');
           this.verificationId = verificationId;
 
           if (!mounted) return;
@@ -228,7 +321,8 @@ class _LoginState extends State<Login> {
           showOtpDialog();
         },
         codeAutoRetrievalTimeout: (String verificationId) {
-          debugPrint('Login: codeAutoRetrievalTimeout, verificationId=$verificationId');
+          debugPrint(
+              'Login: codeAutoRetrievalTimeout, verificationId=$verificationId');
           this.verificationId = verificationId;
 
           if (!mounted) return;
@@ -254,14 +348,14 @@ class _LoginState extends State<Login> {
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: const Color(0xFFFFFCE3),
+          backgroundColor: const Color(0xFFFCFAFF),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
           title: const Text(
             "กรอกรหัส OTP",
             style: TextStyle(
-              color: Color(0xFF564444),
+              color: Color(0xFFEE711E),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -273,7 +367,7 @@ class _LoginState extends State<Login> {
               hintText: "OTP 6 หลัก",
               counterText: "",
               filled: true,
-              fillColor: const Color(0xFFD5E7FF),
+              fillColor: const Color(0xFFEE711E),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide.none,
@@ -287,20 +381,20 @@ class _LoginState extends State<Login> {
               },
               child: const Text(
                 "ยกเลิก",
-                style: TextStyle(color: Color(0xFF564444)),
+                style: TextStyle(color: Color(0xFFEE711E)),
               ),
             ),
             ElevatedButton(
               onPressed: verifyOtp,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF8FBFFF),
+                backgroundColor: const Color(0xFFEE711E),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
               child: const Text(
                 "ยืนยัน",
-                style: TextStyle(color: Color(0xFF564444)),
+                style: TextStyle(color: Color(0xFFEE711E)),
               ),
             ),
           ],
@@ -330,6 +424,7 @@ class _LoginState extends State<Login> {
 
     try {
       debugPrint('Login: verifyOtp() signing in with credential (manual)');
+
       setState(() {
         isLoading = true;
       });
@@ -366,7 +461,7 @@ class _LoginState extends State<Login> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFCE3),
+      backgroundColor: const Color(0xFFFCFAFF),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 35),
@@ -378,7 +473,7 @@ class _LoginState extends State<Login> {
                   width: 110,
                   height: 110,
                   decoration: const BoxDecoration(
-                    color: Color(0xFFD5E7FF),
+                    color: Color(0xFFEE711E),
                     shape: BoxShape.circle,
                   ),
                   child: const Center(
@@ -386,7 +481,7 @@ class _LoginState extends State<Login> {
                       "LOGO",
                       style: TextStyle(
                         fontSize: 18,
-                        color: Color(0xFF564444),
+                        color: Color(0xFFEE711E),
                       ),
                     ),
                   ),
@@ -399,7 +494,7 @@ class _LoginState extends State<Login> {
                   "เบอร์โทรศัพท์",
                   style: TextStyle(
                     fontSize: 14,
-                    color: Color(0xFF564444),
+                    color: Color(0xFFEE711E),
                   ),
                 ),
               ),
@@ -417,12 +512,12 @@ class _LoginState extends State<Login> {
                 decoration: InputDecoration(
                   hintText: "เบอร์โทรศัพท์",
                   hintStyle: const TextStyle(
-                    color: Color(0xFF564444),
+                    color: Color(0xFFEE711E),
                     fontSize: 14,
                   ),
                   errorText: phoneError,
                   filled: true,
-                  fillColor: const Color(0xFFD5E7FF),
+                  fillColor: const Color(0xFFEE711E),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide.none,
@@ -460,7 +555,7 @@ class _LoginState extends State<Login> {
                 child: ElevatedButton(
                   onPressed: isLoading ? null : login,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF8FBFFF),
+                    backgroundColor: const Color(0xFFEE711E),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),
@@ -474,7 +569,7 @@ class _LoginState extends State<Login> {
                       isLoading ? "กำลังส่ง..." : "เข้าสู่ระบบ",
                       style: const TextStyle(
                         fontSize: 14,
-                        color: Color(0xFF564444),
+                        color: Color(0xFFEE711E),
                       ),
                     ),
                   ),
@@ -483,18 +578,18 @@ class _LoginState extends State<Login> {
               const SizedBox(height: 30),
               Row(
                 children: const [
-                  Expanded(child: Divider(color: Color(0xFF564444))),
+                  Expanded(child: Divider(color: Color(0xFFEE711E))),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 12),
                     child: Text(
                       "หรือ",
                       style: TextStyle(
                         fontSize: 16,
-                        color: Color(0xFF564444),
+                        color: Color(0xFFEE711E),
                       ),
                     ),
                   ),
-                  Expanded(child: Divider(color: Color(0xFF564444))),
+                  Expanded(child: Divider(color: Color(0xFFEE711E))),
                 ],
               ),
               const SizedBox(height: 24),
@@ -506,7 +601,7 @@ class _LoginState extends State<Login> {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF8FBFFF),
+                  backgroundColor: const Color(0xFFEE711E),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(18),
                   ),
@@ -517,7 +612,7 @@ class _LoginState extends State<Login> {
                     "ลงทะเบียน",
                     style: TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF564444),
+                      color: Color(0xFFEE711E),
                     ),
                   ),
                 ),

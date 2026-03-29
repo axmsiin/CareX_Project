@@ -7,24 +7,27 @@ class AppSession {
   static const String _keyUserName = 'user_name';
   static const String _keyFirebaseUid = 'firebase_uid';
   static const String _keyToken = 'token';
+  static const String _keyClientId = 'client_id';
+  static const String _keyCaregiverId = 'caregiver_id';
+
   static const String _keyPendingName = 'pending_name';
   static const String _keyPendingPhone = 'pending_phone';
   static const String _keyPendingFirebaseUid = 'pending_firebase_uid';
 
   static Future<void> saveUserSession({
-    int? userId,
+    String? userId,
     required String role,
     required String phone,
     required String userName,
     required String firebaseUid,
     String? token,
+    String? clientId,
+    String? caregiverId,
   }) async {
     final prefs = await SharedPreferences.getInstance();
 
-    print('AppSession: saveUserSession userId=$userId role=$role phone=$phone userName=$userName firebaseUid=$firebaseUid token=${token != null ? '[REDACTED]' : 'null'}');
-
-    if (userId != null) {
-      await prefs.setInt(_keyUserId, userId);
+    if (userId != null && userId.isNotEmpty) {
+      await prefs.setString(_keyUserId, userId);
     }
 
     if (role.isNotEmpty) {
@@ -39,7 +42,35 @@ class AppSession {
       await prefs.setString(_keyToken, token);
     }
 
+    if (clientId != null && clientId.isNotEmpty) {
+      await prefs.setString(_keyClientId, clientId);
+    }
+
+    if (caregiverId != null && caregiverId.isNotEmpty) {
+      await prefs.setString(_keyCaregiverId, caregiverId);
+    }
+
     await clearPendingRegistration();
+  }
+
+  static Future<void> saveClientId(String clientId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyClientId, clientId);
+  }
+
+  static Future<void> saveCaregiverId(String caregiverId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyCaregiverId, caregiverId);
+  }
+
+  static Future<String?> getClientId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyClientId);
+  }
+
+  static Future<String?> getCaregiverId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyCaregiverId);
   }
 
   static Future<void> savePendingRegistration({
@@ -100,9 +131,22 @@ class AppSession {
     return prefs.getString(_keyToken);
   }
 
-  static Future<int?> getUserId() async {
+  static Future<String?> getUserId() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_keyUserId);
+    return prefs.getString(_keyUserId);
+  }
+
+  static Future<void> updateBasicProfile({
+    String? userName,
+    String? phone,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (userName != null) {
+      await prefs.setString(_keyUserName, userName);
+    }
+    if (phone != null) {
+      await prefs.setString(_keyPhone, phone);
+    }
   }
 
   static Future<void> clearSession() async {
@@ -113,6 +157,8 @@ class AppSession {
     await prefs.remove(_keyUserName);
     await prefs.remove(_keyFirebaseUid);
     await prefs.remove(_keyToken);
+    await prefs.remove(_keyClientId);
+    await prefs.remove(_keyCaregiverId);
     await clearPendingRegistration();
   }
 }

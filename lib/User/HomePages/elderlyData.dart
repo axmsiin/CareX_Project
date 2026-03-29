@@ -23,8 +23,6 @@ class ElderlyData {
   String monitoringCare;
   String status;
   String caregiver;
-
-  // เพิ่มส่วนนี้
   String matchPercent;
   String caregiverPhone;
   String caregiverGender;
@@ -34,6 +32,8 @@ class ElderlyData {
   String caregiverRating;
   String caregiverReviewCount;
   String caregiverBio;
+  int? elderlyId;
+  int? score;
 
   ElderlyData({
     required this.fullName,
@@ -60,8 +60,6 @@ class ElderlyData {
     required this.monitoringCare,
     required this.status,
     required this.caregiver,
-
-    // เพิ่มส่วนนี้
     required this.matchPercent,
     required this.caregiverPhone,
     required this.caregiverGender,
@@ -71,6 +69,8 @@ class ElderlyData {
     required this.caregiverRating,
     required this.caregiverReviewCount,
     required this.caregiverBio,
+    this.elderlyId,
+    this.score,
   });
 
   factory ElderlyData.empty() {
@@ -99,8 +99,6 @@ class ElderlyData {
       monitoringCare: 'ไม่มี',
       status: '',
       caregiver: '',
-
-      // เพิ่มส่วนนี้
       matchPercent: '',
       caregiverPhone: '',
       caregiverGender: '',
@@ -110,6 +108,86 @@ class ElderlyData {
       caregiverRating: '',
       caregiverReviewCount: '',
       caregiverBio: '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'fullName': fullName,
+      'nickName': nickName,
+      'phone': phone,
+      'birthDate': birthDate,
+      'gender': gender,
+      'weight': weight,
+      'disease': disease,
+      'address': address,
+      'startDate': startDate,
+      'endDate': endDate,
+      'startTime': startTime,
+      'endTime': endTime,
+      'salaryText': salaryText,
+      'serviceDatesText': serviceDatesText,
+      'scheduleType': scheduleType,
+      'customDays': customDays,
+      'selectedNeeds': selectedNeeds,
+      'needLevel': needLevel,
+      'eatingCare': eatingCare,
+      'woundCare': woundCare,
+      'respiratoryCare': respiratoryCare,
+      'monitoringCare': monitoringCare,
+      'status': status,
+      'caregiver': caregiver,
+      'matchPercent': matchPercent,
+      'caregiverPhone': caregiverPhone,
+      'caregiverGender': caregiverGender,
+      'caregiverAge': caregiverAge,
+      'caregiverProvince': caregiverProvince,
+      'caregiverExperience': caregiverExperience,
+      'caregiverRating': caregiverRating,
+      'caregiverReviewCount': caregiverReviewCount,
+      'caregiverBio': caregiverBio,
+      'elderlyId': elderlyId,
+      'score': score,
+    };
+  }
+
+  factory ElderlyData.fromJson(Map<String, dynamic> json) {
+    return ElderlyData(
+      fullName: json['fullName']?.toString() ?? json['fullname']?.toString() ?? '',
+      nickName: json['nickName']?.toString() ?? json['alias']?.toString() ?? '',
+      phone: json['phone']?.toString() ?? json['tel']?.toString() ?? '',
+      birthDate: json['birthDate']?.toString() ?? json['birthday']?.toString() ?? '',
+      gender: json['gender']?.toString() ?? '',
+      weight: json['weight']?.toString() ?? '',
+      disease: json['disease']?.toString() ?? json['underlying_disease']?.toString() ?? '',
+      address: json['address']?.toString() ?? '',
+      startDate: json['startDate']?.toString() ?? json['start_date']?.toString() ?? '',
+      endDate: json['endDate']?.toString() ?? json['end_date']?.toString() ?? '',
+      startTime: json['startTime']?.toString() ?? json['start_time']?.toString() ?? '',
+      endTime: json['endTime']?.toString() ?? json['end_time']?.toString() ?? '',
+      salaryText: json['salaryText']?.toString() ?? json['budget']?.toString() ?? '',
+      serviceDatesText: json['serviceDatesText']?.toString() ?? json['service_date']?.toString() ?? '',
+      scheduleType: json['scheduleType']?.toString() ?? '',
+      customDays: (json['customDays'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      selectedNeeds: ((json['selectedNeeds'] as List?) ?? (json['service_needs'] as List?) ?? const []).map((e) => e.toString()).toList(),
+      needLevel: json['needLevel']?.toString() ?? json['care_level']?.toString() ?? '',
+      eatingCare: json['eatingCare']?.toString() ?? '',
+      woundCare: json['woundCare']?.toString() ?? '',
+      respiratoryCare: json['respiratoryCare']?.toString() ?? '',
+      monitoringCare: json['monitoringCare']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
+      caregiver: json['caregiver']?.toString() ?? json['caregiver_name']?.toString() ?? '',
+      matchPercent: json['matchPercent']?.toString() ?? json['percent_match']?.toString() ?? '',
+      caregiverPhone: json['caregiverPhone']?.toString() ?? '',
+      caregiverGender: json['caregiverGender']?.toString() ?? '',
+      caregiverAge: json['caregiverAge']?.toString() ?? '',
+      caregiverProvince: json['caregiverProvince']?.toString() ?? '',
+      caregiverExperience: json['caregiverExperience']?.toString() ?? '',
+      caregiverRating: json['caregiverRating']?.toString() ?? '',
+      caregiverReviewCount: json['caregiverReviewCount']?.toString() ?? '',
+      caregiverBio: json['caregiverBio']?.toString() ?? '',
+      elderlyId: json['elderlyId'] is int ? json['elderlyId'] : int.tryParse('${json['elderlyId'] ?? json['elderly_id']}'),
+      score: json['score'] is int ? json['score'] : int.tryParse('${json['score']}'),
     );
   }
 }

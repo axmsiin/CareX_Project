@@ -1,6 +1,7 @@
 import 'package:carex/Caregiver/Profile_Caregiver/caregiverData.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/profileCaregiver_two.dart';
 import 'package:carex/controllers/profile_controller.dart';
+import 'package:carex/Caregiver/Profile_Caregiver/caregiver_store.dart';
 import 'package:carex/models/caregiver_profile_request.dart';
 import 'package:carex/services/app_session.dart';
 import 'package:flutter/cupertino.dart';
@@ -186,13 +187,13 @@ class _profilecaregiver_oneState extends State<profilecaregiver_one> {
 
   String formatDate(DateTime? date) {
     if (date == null) return 'วันเกิด';
-    return '${date.day} ${thaiMonths[date.month]} ${date.year}';
+    return '${date.day} ${thaiMonths[date.month]} ${date.year + 543}';
   }
 
   String formatApiDate(DateTime date) {
     final month = date.month.toString().padLeft(2, '0');
     final day = date.day.toString().padLeft(2, '0');
-    return '${date.year}-$month-$day';
+    return '${date.year + 543}-$month-$day';
   }
 
   Future<void> pickBirthDate() async {
@@ -248,7 +249,7 @@ class _profilecaregiver_oneState extends State<profilecaregiver_one> {
                   Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF003F91),
+                  backgroundColor: const Color(0xFFEE711E),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -334,7 +335,7 @@ class _profilecaregiver_oneState extends State<profilecaregiver_one> {
                   Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF003F91),
+                  backgroundColor: const Color(0xFFEE711E),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -400,17 +401,17 @@ class _profilecaregiver_oneState extends State<profilecaregiver_one> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
                           borderSide:
-                              const BorderSide(color: Color(0xFF003F91)),
+                              const BorderSide(color: Color(0xFFEE711E)),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
                           borderSide:
-                              const BorderSide(color: Color(0xFF003F91)),
+                              const BorderSide(color: Color(0xFFEE711E)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
                           borderSide: const BorderSide(
-                            color: Color(0xFF003F91),
+                            color: Color(0xFFEE711E),
                             width: 1.5,
                           ),
                         ),
@@ -480,7 +481,7 @@ class _profilecaregiver_oneState extends State<profilecaregiver_one> {
                               Navigator.pop(context);
                             },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF003F91),
+                        backgroundColor: const Color(0xFFEE711E),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
@@ -542,7 +543,7 @@ class _profilecaregiver_oneState extends State<profilecaregiver_one> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: hasError ? const Color(0xFFF04444) : const Color(0xFF003F91),
+          color: hasError ? const Color(0xFFF04444) : const Color(0xFFEE711E),
           width: 1.2,
         ),
       ),
@@ -629,16 +630,7 @@ class _profilecaregiver_oneState extends State<profilecaregiver_one> {
 
     if (!isValid) return;
 
-    final userId = await AppSession.getUserId();
     final token = await AppSession.getToken();
-
-    if (userId == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ไม่พบ user_id กรุณาเข้าสู่ระบบใหม่')),
-      );
-      return;
-    }
 
     if (token == null || token.isEmpty) {
       if (!mounted) return;
@@ -653,7 +645,6 @@ class _profilecaregiver_oneState extends State<profilecaregiver_one> {
     });
 
     final request = CaregiverProfileRequest(
-      userId: userId,
       fullname: fullNameController.text.trim(),
       alias: nickNameController.text.trim(),
       tel: phoneController.text.trim(),
@@ -661,6 +652,8 @@ class _profilecaregiver_oneState extends State<profilecaregiver_one> {
       weight: selectedWeight,
       height: selectedHeight,
       address: addressController.text.trim(),
+      latitude: selectedLatitude ?? 0.0,
+      longitude: selectedLongitude ?? 0.0,
       province: selectedProvince.trim(),
       birthday: formatApiDate(selectedBirthDate!),
     );
@@ -683,6 +676,12 @@ class _profilecaregiver_oneState extends State<profilecaregiver_one> {
       return;
     }
 
+    // บันทึก caregiver_id ที่ได้จาก backend
+    if (result.caregiverId != null && result.caregiverId!.isNotEmpty) {
+      await AppSession.saveCaregiverId(result.caregiverId!);
+      print('✅ Saved caregiver_id: ${result.caregiverId}');
+    }
+
     widget.profile.fullName = fullNameController.text.trim();
     widget.profile.nickName = nickNameController.text.trim();
     widget.profile.phone = phoneController.text.trim();
@@ -692,6 +691,8 @@ class _profilecaregiver_oneState extends State<profilecaregiver_one> {
     widget.profile.gender = selectedGender ?? '';
     widget.profile.address = addressController.text.trim();
     widget.profile.province = selectedProvince;
+
+    await CaregiverStore.save(widget.profile);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(result.message)),
@@ -740,7 +741,7 @@ class _profilecaregiver_oneState extends State<profilecaregiver_one> {
                       child: Icon(
                         Icons.account_circle_outlined,
                         size: 90,
-                        color: Color(0xFF003F91),
+                        color: Color(0xFFEE711E),
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -1026,7 +1027,7 @@ class _profilecaregiver_oneState extends State<profilecaregiver_one> {
                           border: Border.all(
                             color: addressError != null
                                 ? const Color(0xFFF04444)
-                                : const Color(0xFF003F91),
+                                : const Color(0xFFEE711E),
                             width: 1.2,
                           ),
                         ),
@@ -1070,7 +1071,7 @@ class _profilecaregiver_oneState extends State<profilecaregiver_one> {
                       child: ElevatedButton(
                         onPressed: isSaving ? null : submitProfile,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF003F91),
+                          backgroundColor: const Color(0xFFEE711E),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                           ),

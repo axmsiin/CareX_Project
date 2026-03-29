@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/caregiverData.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/profileCaregiver.dart';
+import 'package:carex/Caregiver/Profile_Caregiver/caregiver_store.dart';
+import 'package:carex/services/backend_data_service.dart';
 
 class question extends StatefulWidget {
   final caregiverData profile;
@@ -57,7 +59,15 @@ class _questionState extends State<question> {
   String? selectedAnswer;
   final List<String> answers = [];
 
-  void nextQuestion() {
+  int _calculateScore(List<String> selectedAnswers) {
+    final aCount = selectedAnswers.where((e) => e == 'A').length;
+    final bCount = selectedAnswers.where((e) => e == 'B').length;
+    if (aCount > bCount) return 1;
+    if (bCount > aCount) return 2;
+    return 3;
+  }
+
+  Future<void> nextQuestion() async {
     if (selectedAnswer == null) return;
 
     answers.add(selectedAnswer!);
@@ -68,6 +78,25 @@ class _questionState extends State<question> {
         selectedAnswer = null;
       });
     } else {
+      final score = _calculateScore(answers);
+      final now = DateTime.now();
+
+      widget.profile.score = score;
+      await CaregiverStore.save(widget.profile);
+
+      await BackendDataService.submitQuestionScore(
+        target: 'caregiver',
+        score: score,
+        relatedId: widget.profile.caregiverId,
+        answers: answers,
+      );
+
+      await BackendDataService.updateCaregiverScore(
+        score: score,
+        scoreDate: now,
+      );
+
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -90,7 +119,7 @@ class _questionState extends State<question> {
         height: 190,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF8FBFFF) : const Color(0xFFD5E7FF),
+          color: isSelected ? const Color(0xFFEE711E) : const Color(0xFFFCFAFF),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
@@ -127,7 +156,7 @@ class _questionState extends State<question> {
     final current = questions[currentQuestionIndex];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFCE3),
+      backgroundColor: const Color(0xFFFDF0E8),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
@@ -175,7 +204,7 @@ class _questionState extends State<question> {
                   vertical: 16,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD5E7FF),
+                  color: const Color(0xFFFCFAFF),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Text(
@@ -220,8 +249,8 @@ class _questionState extends State<question> {
                   onPressed: selectedAnswer == null ? null : nextQuestion,
                   style: ElevatedButton.styleFrom(
                     elevation: 0,
-                    backgroundColor: const Color(0xFF8FBFFF),
-                    disabledBackgroundColor: const Color(0xFFD5E7FF),
+                    backgroundColor: const Color(0xFFEE711E),
+                    disabledBackgroundColor: const Color(0xFFFCFAFF),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),
@@ -242,16 +271,15 @@ class _questionState extends State<question> {
       bottomNavigationBar: Container(
         height: 80,
         decoration: const BoxDecoration(
-          color: Color(0xFFD5E7FF),
+          color: Color(0xFFFCFAFF),
           borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
         ),
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            Icon(Icons.home, size: 36, color: const Color(0xFF003F91)),
-            Icon(Icons.notifications, size: 34, color: const Color(0xFF003F91)),
-            Icon(Icons.account_circle,
-                size: 36, color: const Color(0xFF003F91)),
+            Icon(Icons.home, size: 36, color: Color(0xFFEE711E)),
+            Icon(Icons.notifications, size: 34, color: Color(0xFFEE711E)),
+            Icon(Icons.account_circle, size: 36, color: Color(0xFFEE711E)),
           ],
         ),
       ),
