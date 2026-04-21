@@ -1,6 +1,8 @@
 import 'package:carex/User/HomePages/addProfileElderly_three.dart';
 import 'package:carex/User/HomePages/elderlyData.dart';
+import 'package:carex/services/backend_data_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class addProfileElderly_two extends StatefulWidget {
   final ElderlyData elderlyData;
@@ -12,6 +14,15 @@ class addProfileElderly_two extends StatefulWidget {
 }
 
 class _addProfileElderly_twoState extends State<addProfileElderly_two> {
+  static const Color kPrimary = Color(0xFFEE711E);
+  static const Color kWhite = Color(0xFFFFFFFF);
+  static const Color kText = Color(0xFF564444);
+  static const Color kTopBar = Color(0xFFFFC59E);
+  static const Color kBackground = Color(0xFFFDF0E8);
+  static const Color kFieldFill = Color(0xFFF5F3F6);
+  static const Color kBottomBar = Color(0xFFFFC59E);
+  static const String kFont = 'Sarabun';
+
   final List<String> scheduleOptions = [
     'ทุกวัน',
     'วันธรรมดา',
@@ -68,6 +79,11 @@ class _addProfileElderly_twoState extends State<addProfileElderly_two> {
   void initState() {
     super.initState();
 
+    selectedScheduleType = widget.elderlyData.scheduleType.isEmpty
+        ? null
+        : widget.elderlyData.scheduleType;
+    selectedCustomDays.addAll(widget.elderlyData.customDays);
+
     if (widget.elderlyData.startDate.isNotEmpty) {
       startDate = _parseThaiDate(widget.elderlyData.startDate);
     }
@@ -82,9 +98,8 @@ class _addProfileElderly_twoState extends State<addProfileElderly_two> {
     }
 
     if (widget.elderlyData.salaryText.isNotEmpty) {
-      final match = RegExp(
-        r'(\d+)\s*-\s*(\d+)',
-      ).firstMatch(widget.elderlyData.salaryText);
+      final match = RegExp(r'(\d+)\s*-\s*(\d+)')
+          .firstMatch(widget.elderlyData.salaryText);
       if (match != null) {
         salaryRange = RangeValues(
           double.tryParse(match.group(1) ?? '450') ?? 450,
@@ -102,14 +117,15 @@ class _addProfileElderly_twoState extends State<addProfileElderly_two> {
       final month = thaiMonths.indexOf(parts[1]);
       final year = int.tryParse(parts[2]);
       if (day == null || month <= 0 || year == null) return null;
-      return DateTime(year, month, day);
+      return DateTime(year - 543, month, day);
     } catch (_) {
       return null;
     }
   }
 
   TimeOfDay _parseTime(String value) {
-    final parts = value.split('.');
+    final normalized = value.replaceAll('.', ':');
+    final parts = normalized.split(':');
     if (parts.length != 2) return const TimeOfDay(hour: 9, minute: 0);
     return TimeOfDay(
       hour: int.tryParse(parts[0]) ?? 9,
@@ -125,7 +141,7 @@ class _addProfileElderly_twoState extends State<addProfileElderly_two> {
   String formatTime(TimeOfDay time) {
     final h = time.hour.toString().padLeft(2, '0');
     final m = time.minute.toString().padLeft(2, '0');
-    return '$h.$m';
+    return '$h:$m';
   }
 
   String _thaiWeekdayFromDate(DateTime date) {
@@ -177,10 +193,8 @@ class _addProfileElderly_twoState extends State<addProfileElderly_two> {
     }
   }
 
-  DateTime findNearestSelectableDate(
-    DateTime preferred, {
-    required bool isStart,
-  }) {
+  DateTime findNearestSelectableDate(DateTime preferred,
+      {required bool isStart}) {
     if (canSelectDate(preferred, isStart: isStart)) return preferred;
 
     for (int i = 1; i <= 1500; i++) {
@@ -221,7 +235,7 @@ class _addProfileElderly_twoState extends State<addProfileElderly_two> {
       return;
     }
 
-    if (selectedScheduleType == 'กำหนดวันเอง' && selectedCustomDays.isEmpty) {
+    if (selectedScheduleType == 'ระยะเวลา' && selectedCustomDays.isEmpty) {
       setState(() {
         customDaysError = 'กรุณาเลือกวันอย่างน้อย 1 วัน';
       });
@@ -239,19 +253,29 @@ class _addProfileElderly_twoState extends State<addProfileElderly_two> {
       initialDate: preferred,
       firstDate: DateTime(2024),
       lastDate: DateTime(2100),
-      initialEntryMode: DatePickerEntryMode.calendarOnly,
-      initialDatePickerMode: DatePickerMode.day,
-      helpText: 'เลือกวันที่',
-      cancelText: 'ยกเลิก',
-      confirmText: 'ตกลง',
       selectableDayPredicate: (date) {
         if (!canSelectDate(date, isStart: isStart)) return false;
-
         if (!isStart && startDate != null && date.isBefore(startDate!)) {
           return false;
         }
-
         return true;
+      },
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: kPrimary,
+              onPrimary: kWhite,
+              onSurface: kText,
+            ),
+            textTheme: Theme.of(context).textTheme.apply(
+                  fontFamily: kFont,
+                  bodyColor: kText,
+                  displayColor: kText,
+                ),
+          ),
+          child: child!,
+        );
       },
     );
 
@@ -260,12 +284,10 @@ class _addProfileElderly_twoState extends State<addProfileElderly_two> {
         if (isStart) {
           startDate = picked;
           startDateError = null;
-
-          if (endDate != null) {
-            if (endDate!.isBefore(startDate!) ||
-                !canSelectDate(endDate!, isStart: false)) {
-              endDate = null;
-            }
+          if (endDate != null &&
+              (endDate!.isBefore(startDate!) ||
+                  !canSelectDate(endDate!, isStart: false))) {
+            endDate = null;
           }
         } else {
           endDate = picked;
@@ -277,8 +299,27 @@ class _addProfileElderly_twoState extends State<addProfileElderly_two> {
 
   Future<void> pickTime({required bool isStart}) async {
     final initial = isStart ? startTime : endTime;
-
-    final picked = await showTimePicker(context: context, initialTime: initial);
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: kPrimary,
+              onPrimary: kWhite,
+              onSurface: kText,
+            ),
+            textTheme: Theme.of(context).textTheme.apply(
+                  fontFamily: kFont,
+                  bodyColor: kText,
+                  displayColor: kText,
+                ),
+          ),
+          child: child!,
+        );
+      },
+    );
 
     if (picked != null) {
       setState(() {
@@ -326,95 +367,48 @@ class _addProfileElderly_twoState extends State<addProfileElderly_two> {
     DateTime current = startDate!;
 
     while (!current.isAfter(endDate!)) {
-      if (isDateMatched(current)) {
-        count++;
-      }
+      if (isDateMatched(current)) count++;
       current = current.add(const Duration(days: 1));
     }
 
     return count;
   }
 
-  List<DateTime> getMatchedDates() {
-    if (startDate == null || endDate == null || selectedScheduleType == null) {
-      return [];
-    }
-
+  String buildDetailedServiceDatesText() {
+    if (startDate == null || endDate == null) return '';
     final List<DateTime> dates = [];
     DateTime current = startDate!;
 
     while (!current.isAfter(endDate!)) {
-      if (isDateMatched(current)) {
-        dates.add(current);
-      }
+      if (isDateMatched(current)) dates.add(current);
       current = current.add(const Duration(days: 1));
     }
 
-    return dates;
-  }
-
-  String buildDetailedServiceDatesText() {
-    final dates = getMatchedDates();
     if (dates.isEmpty) return '';
 
-    final Map<int, Map<int, List<int>>> groupedByYearAndMonth = {};
-
-    for (final date in dates) {
-      groupedByYearAndMonth.putIfAbsent(date.year, () => {});
-      groupedByYearAndMonth[date.year]!.putIfAbsent(date.month, () => []);
-      groupedByYearAndMonth[date.year]![date.month]!.add(date.day);
-    }
-
-    final sortedYears = groupedByYearAndMonth.keys.toList()..sort();
-    final List<String> yearParts = [];
-
-    for (final year in sortedYears) {
-      final monthsMap = groupedByYearAndMonth[year]!;
-      final sortedMonths = monthsMap.keys.toList()..sort();
-
-      final List<String> monthParts = [];
-
-      for (final month in sortedMonths) {
-        final days = monthsMap[month]!..sort();
-
-        final List<String> ranges = [];
-        int start = days.first;
-        int end = days.first;
-
-        for (int i = 1; i < days.length; i++) {
-          if (days[i] == end + 1) {
-            end = days[i];
-          } else {
-            ranges.add(start == end ? '$start' : '$start-$end');
-            start = days[i];
-            end = days[i];
-          }
-        }
-
-        ranges.add(start == end ? '$start' : '$start-$end');
-
-        monthParts.add('${ranges.join(', ')} ${thaiMonths[month]}');
-      }
-
-      yearParts.add('${monthParts.join(', ')} $year');
-    }
-
-    return yearParts.join(', ');
+    return BackendDataService.formatDateRanges(dates);
   }
 
   Widget buildBox({
     required Widget child,
-    EdgeInsetsGeometry? padding,
     bool hasError = false,
+    double height = 42,
+    EdgeInsetsGeometry? padding,
+    AlignmentGeometry alignment = Alignment.center,
   }) {
     return Container(
+      height: height,
       width: double.infinity,
+      alignment: alignment,
       padding:
-          padding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+          padding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
       decoration: BoxDecoration(
-        color: const Color(0xFFFCFAFF),
+        color: kFieldFill,
         borderRadius: BorderRadius.circular(14),
-        border: hasError ? Border.all(color: const Color(0xFFF04444)) : null,
+        border: Border.all(
+          color: hasError ? const Color(0xFFF04444) : kPrimary,
+          width: 1.2,
+        ),
       ),
       child: child,
     );
@@ -423,10 +417,14 @@ class _addProfileElderly_twoState extends State<addProfileElderly_two> {
   Widget buildFieldError(String? error) {
     if (error == null) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(left: 12, top: 4),
+      padding: const EdgeInsets.only(left: 8, top: 4),
       child: Text(
         error,
-        style: const TextStyle(color: Color(0xFFF04444), fontSize: 12),
+        style: const TextStyle(
+          color: Color(0xFFF04444),
+          fontSize: 12,
+          fontFamily: kFont,
+        ),
       ),
     );
   }
@@ -458,24 +456,29 @@ class _addProfileElderly_twoState extends State<addProfileElderly_two> {
       },
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFFFCFAFF),
+          color: kFieldFill,
           borderRadius: BorderRadius.circular(14),
-          border: customDaysError != null
-              ? Border.all(color: const Color(0xFFF04444))
-              : null,
+          border: Border.all(
+            color: customDaysError != null ? const Color(0xFFF04444) : kPrimary,
+            width: 1.2,
+          ),
         ),
         child: Row(
           children: [
             Icon(
               isSelected ? Icons.check_box : Icons.check_box_outline_blank,
-              color: const Color(0xFFEE711E),
+              color: kPrimary,
             ),
             const SizedBox(width: 10),
             Text(
               day,
-              style: const TextStyle(fontSize: 15, color: Color(0xFF564444)),
+              style: const TextStyle(
+                fontSize: 14,
+                color: kText,
+                fontFamily: kFont,
+              ),
             ),
           ],
         ),
@@ -528,10 +531,18 @@ class _addProfileElderly_twoState extends State<addProfileElderly_two> {
       isValid = false;
     }
 
-    setState(() {});
+    final startMinutes = startTime.hour * 60 + startTime.minute;
+    final endMinutes = endTime.hour * 60 + endTime.minute;
+    if (startMinutes == endMinutes) {
+      timeError = 'เวลาเริ่มและเวลาสิ้นสุดต้องไม่เท่ากัน';
+      isValid = false;
+    }
 
+    setState(() {});
     if (!isValid) return;
 
+    widget.elderlyData.scheduleType = selectedScheduleType ?? '';
+    widget.elderlyData.customDays = selectedCustomDays.toList();
     widget.elderlyData.startDate = formatThaiDate(startDate);
     widget.elderlyData.endDate = formatThaiDate(endDate);
     widget.elderlyData.startTime = formatTime(startTime);
@@ -549,337 +560,478 @@ class _addProfileElderly_twoState extends State<addProfileElderly_two> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final workingDays = calculateWorkingDays();
+  Widget _buildTopBar() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              size: 20,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(width: 10),
+          const Text(
+            'ข้อมูลผู้สูงอายุ',
+            style: TextStyle(
+              color: kText,
+              fontSize: 16,
+              fontFamily: kFont,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFDF0E8),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                icon: const Icon(
-                  Icons.arrow_back_ios_new,
-                  color: Color(0xFF564444),
+  Widget _buildDropdownSchedule() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        buildBox(
+          hasError: scheduleTypeError != null,
+          height: 40,
+          alignment: Alignment.centerLeft,
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: selectedScheduleType,
+              isExpanded: true,
+              icon: const Icon(Icons.keyboard_arrow_down, color: kPrimary),
+              hint: const Text(
+                'ระยะเวลา',
+                style: TextStyle(
+                  color: kText,
+                  fontSize: 14,
+                  fontFamily: kFont,
                 ),
-                label: const Text(
-                  'ข้อมูลผู้สูงอายุ',
-                  style: TextStyle(color: Color(0xFF564444)),
-                ),
               ),
-              const SizedBox(height: 20),
-              const Text(
-                'วันและเวลาที่จะรับบริการ',
-                style: TextStyle(fontSize: 18, color: Color(0xFF564444)),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                '*หมายเหตุ : เลือกระยะเวลาทุกรูปแบบ โดยเลือกเป็น ทุกวัน,วันธรรมดา,เสาร์-อาทิตย์,กำหนดวันเอง,ทุกเดือน,ทุกปี',
-                style: TextStyle(fontSize: 12, color: Color(0xFFF04444)),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFCFAFF),
-                            borderRadius: BorderRadius.circular(14),
-                            border: scheduleTypeError != null
-                                ? Border.all(color: const Color(0xFFF04444))
-                                : null,
-                          ),
-                          child: DropdownButtonFormField<String>(
-                            value: selectedScheduleType,
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                            ),
-                            hint: const Text('ระยะเวลา'),
-                            items: scheduleOptions.map((item) {
-                              return DropdownMenuItem(
-                                value: item,
-                                child: Text(item),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                selectedScheduleType = value;
-                                scheduleTypeError = null;
-
-                                if (value != 'กำหนดวันเอง') {
-                                  selectedCustomDays.clear();
-                                  customDaysError = null;
-                                }
-
-                                syncDatesWithSchedule();
-                              });
-                            },
-                          ),
-                        ),
-                        buildFieldError(scheduleTypeError),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        InkWell(
-                          onTap: () => pickDate(isStart: true),
-                          child: buildBox(
-                            hasError: startDateError != null,
-                            child: Text(
-                              startDate == null
-                                  ? 'วันที่เริ่ม'
-                                  : 'วันที่เริ่ม : ${formatThaiDate(startDate)}',
-                              style: const TextStyle(
-                                color: Color(0xFF564444),
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ),
-                        buildFieldError(startDateError),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              if (selectedScheduleType == 'กำหนดวันเอง') ...[
-                ...weekDays.map(
-                  (day) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: buildCustomDayBox(day),
-                  ),
-                ),
-                buildFieldError(customDaysError),
-                const SizedBox(height: 2),
-              ],
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: buildBox(
+              items: scheduleOptions
+                  .map(
+                    (item) => DropdownMenuItem<String>(
+                      value: item,
                       child: Text(
-                        '$workingDays วัน',
-                        textAlign: TextAlign.center,
+                        item,
                         style: const TextStyle(
-                          color: Color(0xFF564444),
-                          fontSize: 16,
+                          color: kText,
+                          fontSize: 14,
+                          fontFamily: kFont,
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        InkWell(
-                          onTap: () => pickDate(isStart: false),
-                          child: buildBox(
-                            hasError: endDateError != null,
-                            child: Text(
-                              endDate == null
-                                  ? 'วันสิ้นสุด'
-                                  : 'วันสิ้นสุด : ${formatThaiDate(endDate)}',
-                              style: const TextStyle(
-                                color: Color(0xFF564444),
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ),
-                        buildFieldError(endDateError),
-                      ],
-                    ),
-                  ),
-                ],
+                  )
+                  .toList(),
+              onChanged: (value) {
+                setState(() {
+                  selectedScheduleType = value;
+                  scheduleTypeError = null;
+
+                  if (value != 'กำหนดวันเอง') {
+                    selectedCustomDays.clear();
+                    customDaysError = null;
+                  }
+
+                  syncDatesWithSchedule();
+                });
+              },
+            ),
+          ),
+        ),
+        buildFieldError(scheduleTypeError),
+      ],
+    );
+  }
+
+  Widget _buildDateStartField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () => pickDate(isStart: true),
+          child: buildBox(
+            hasError: startDateError != null,
+            height: 40,
+            alignment: Alignment.center,
+            child: Text(
+              startDate == null
+                  ? 'วันที่เริ่ม'
+                  : 'วันที่เริ่ม : ${BackendDataService.toThaiDateWithDay(startDate!)}',
+              style: const TextStyle(
+                color: kText,
+                fontSize: 14,
+                fontFamily: kFont,
               ),
-              const SizedBox(height: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  buildBox(
-                    hasError: timeError != null,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        InkWell(
-                          onTap: () => pickTime(isStart: true),
-                          child: Text(
-                            formatTime(startTime),
-                            style: const TextStyle(
-                              color: Color(0xFF564444),
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                        const Text(
-                          ' - ',
-                          style: TextStyle(
-                            color: Color(0xFF564444),
-                            fontSize: 16,
-                          ),
-                        ),
-                        InkWell(
-                          onTap: () => pickTime(isStart: false),
-                          child: Text(
-                            formatTime(endTime),
-                            style: const TextStyle(
-                              color: Color(0xFF564444),
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  buildFieldError(timeError),
-                ],
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+        buildFieldError(startDateError),
+      ],
+    );
+  }
+
+  Widget _buildWorkingDaysField(int workingDays) {
+    return buildBox(
+      height: 40,
+      child: Text(
+        '$workingDays วัน',
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: kText,
+          fontSize: 16,
+          fontFamily: kFont,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateEndField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () => pickDate(isStart: false),
+          child: buildBox(
+            hasError: endDateError != null,
+            height: 40,
+            alignment: Alignment.center,
+            child: Text(
+              endDate == null
+                  ? 'วันที่สิ้นสุด'
+                  : 'วันที่สิ้นสุด : ${BackendDataService.toThaiDateWithDay(endDate!)}',
+              style: const TextStyle(
+                color: kText,
+                fontSize: 14,
+                fontFamily: kFont,
               ),
-              const SizedBox(height: 24),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+        buildFieldError(endDateError),
+      ],
+    );
+  }
+
+  Widget _buildTimeField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        buildBox(
+          hasError: timeError != null,
+          height: 40,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              InkWell(
+                onTap: () => pickTime(isStart: true),
+                child: Text(
+                  formatTime(startTime),
+                  style: const TextStyle(
+                    color: kText,
+                    fontSize: 16,
+                    fontFamily: kFont,
+                  ),
+                ),
+              ),
               const Text(
-                'ราคาค่าจ้าง',
-                style: TextStyle(fontSize: 18, color: Color(0xFF564444)),
+                ' - ',
+                style: TextStyle(
+                  color: kText,
+                  fontSize: 16,
+                  fontFamily: kFont,
+                ),
               ),
-              const SizedBox(height: 14),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 90,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 14,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFCFAFF),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Text(
-                      'วัน',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Color(0xFF564444),
+              InkWell(
+                onTap: () => pickTime(isStart: false),
+                child: Text(
+                  formatTime(endTime),
+                  style: const TextStyle(
+                    color: kText,
+                    fontSize: 16,
+                    fontFamily: kFont,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        buildFieldError(timeError),
+      ],
+    );
+  }
+
+  Widget _buildSalarySection() {
+    final double startValue = salaryRange.start;
+    final double endValue = salaryRange.end;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'ราคาค่าจ้าง',
+          style: TextStyle(
+            fontSize: 16,
+            color: kText,
+            fontFamily: kFont,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 64,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: kFieldFill,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: kPrimary, width: 1.2),
+              ),
+              child: const Text(
+                'วัน',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: kText,
+                  fontFamily: kFont,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: SizedBox(
+                height: 52,
+                child: Stack(
+                  children: [
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: 0,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${startValue.round()} บาท',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: kText,
+                              fontFamily: kFont,
+                            ),
+                          ),
+                          Text(
+                            '${endValue.round()} บาท',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: kText,
+                              fontFamily: kFont,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                '${salaryRange.start.round()} บาท',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF564444),
-                                ),
-                              ),
-                              Text(
-                                '${salaryRange.end.round()} บาท',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF564444),
-                                ),
-                              ),
-                            ],
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: 10,
+                      bottom: 0,
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          activeTrackColor: const Color(0xFFF48A8A),
+                          inactiveTrackColor: const Color(0xFF8C817F),
+                          thumbColor: const Color(0xFFF04848),
+                          overlayColor:
+                              const Color(0xFFF04848).withOpacity(0.15),
+                          trackHeight: 1.8,
+                          rangeThumbShape: const RoundRangeSliderThumbShape(
+                            enabledThumbRadius: 5,
                           ),
+                          overlayShape: const RoundSliderOverlayShape(
+                            overlayRadius: 10,
+                          ),
+                          showValueIndicator: ShowValueIndicator.never,
                         ),
-                        RangeSlider(
+                        child: RangeSlider(
                           values: salaryRange,
                           min: 450,
                           max: 100000,
-                          divisions: 99550,
+                          divisions: ((100000 - 450) / 5).round(),
                           labels: RangeLabels(
                             salaryRange.start.round().toString(),
                             salaryRange.end.round().toString(),
                           ),
                           onChanged: (RangeValues values) {
+                            final double snappedStart =
+                                ((values.start / 5).round() * 5).toDouble();
+                            final double snappedEnd =
+                                ((values.end / 5).round() * 5).toDouble();
+
                             setState(() {
-                              salaryRange = values;
+                              salaryRange = RangeValues(
+                                snappedStart.clamp(450, 100000),
+                                snappedEnd.clamp(450, 100000),
+                              );
                             });
                           },
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton(
-                  onPressed: goNext,
-                  style: ElevatedButton.styleFrom(
-                    elevation: 0,
-                    backgroundColor: const Color(0xFFEE711E),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                  ),
-                  child: const Text(
-                    'ถัดไป',
-                    style: TextStyle(color: Color(0xFF564444)),
-                  ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 30),
-            ],
-          ),
-        ),
-      ),
-      bottomNavigationBar: Container(
-        height: 85,
-        decoration: const BoxDecoration(
-          color: Color(0xFFFCFAFF),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.home, size: 34, color: Color(0xFFEE711E)),
-            ),
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(
-                Icons.notifications,
-                size: 38,
-                color: Color(0xFFEE711E),
-              ),
-            ),
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(
-                Icons.account_circle,
-                size: 42,
-                color: Color(0xFFEE711E),
               ),
             ),
           ],
         ),
+      ],
+    );
+  }
+
+  Widget _buildNextButton() {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: SizedBox(
+        width: 78,
+        height: 40,
+        child: ElevatedButton(
+          onPressed: goNext,
+          style: ElevatedButton.styleFrom(
+            elevation: 0,
+            backgroundColor: kPrimary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            padding: EdgeInsets.zero,
+          ),
+          child: const Text(
+            'ถัดไป',
+            style: TextStyle(
+              color: kWhite,
+              fontSize: 16,
+              fontFamily: kFont,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomBar() {
+    return Container(
+      height: 95,
+      decoration: const BoxDecoration(
+        color: kBottomBar,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(38)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: const [
+          Icon(Icons.home, size: 42, color: kWhite),
+          Icon(Icons.notifications, size: 40, color: kPrimary),
+          Icon(Icons.account_circle, size: 46, color: kPrimary),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final workingDays = calculateWorkingDays();
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: kTopBar,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: kBackground,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildTopBar(),
+                const SizedBox(height: 36),
+                const Text(
+                  'วันและเวลาที่จะรับบริการ',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: kText,
+                    fontFamily: kFont,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  '*หมายเหตุ : เลือกระยะที่ต้องการดูแล โดยเลือกเป็น ทุกวัน,วันธรรมดา,เสาร์-อาทิตย์,\nกำหนดวันเอง,ทุกเดือน,ทุกปี',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFFF04444),
+                    fontFamily: kFont,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: _buildDropdownSchedule(),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 5,
+                      child: _buildDateStartField(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                if (selectedScheduleType == 'กำหนดวันเอง') ...[
+                  ...weekDays.map(
+                    (day) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: buildCustomDayBox(day),
+                    ),
+                  ),
+                  buildFieldError(customDaysError),
+                  const SizedBox(height: 2),
+                ],
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: _buildWorkingDaysField(workingDays),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 5,
+                      child: _buildDateEndField(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                _buildTimeField(),
+                const SizedBox(height: 14),
+                _buildSalarySection(),
+                const SizedBox(height: 18),
+                _buildNextButton(),
+                const SizedBox(height: 30),
+              ],
+            ),
+          ),
+        ),
+        bottomNavigationBar: _buildBottomBar(),
       ),
     );
   }

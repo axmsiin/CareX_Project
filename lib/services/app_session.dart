@@ -1,3 +1,4 @@
+import 'package:carex/User/HomePages/elderlyStore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AppSession {
@@ -151,6 +152,9 @@ class AppSession {
 
   static Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
+    
+    ElderlyStore.confirmedIds.clear();
+
     await prefs.remove(_keyUserId);
     await prefs.remove(_keyRole);
     await prefs.remove(_keyPhone);

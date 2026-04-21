@@ -34,10 +34,16 @@ class AuthController {
   static String normalizePhone(String phone) {
     final digits = phone.replaceAll(RegExp(r'[^0-9+]'), '');
 
-    if (digits.startsWith('+66')) return digits;
-    if (digits.startsWith('66')) return '+$digits';
+    if (digits.startsWith('+66')) {
+      return '0${digits.substring(3)}';
+    }
+
+    if (digits.startsWith('66')) {
+      return '0${digits.substring(2)}';
+    }
+
     if (digits.startsWith('0') && digits.length == 10) {
-      return '+66${digits.substring(1)}';
+      return digits;
     }
 
     return digits;
@@ -92,7 +98,7 @@ class AuthController {
     // แยก role_id ไปเก็บตาม role ที่เหมาะสม
     String? clientId;
     String? caregiverId;
-    
+
     if (serviceResult.role == 'client') {
       clientId = serviceResult.roleId;
     } else if (serviceResult.role == 'caregiver') {

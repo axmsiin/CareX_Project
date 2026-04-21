@@ -1,7 +1,9 @@
 import 'package:carex/User/HomePages/addProfilrElderly_two.dart';
 import 'package:carex/User/HomePages/elderlyData.dart';
+import 'package:carex/services/backend_data_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:carex/map.dart';
 
 class addProfileElderly_one extends StatefulWidget {
@@ -25,6 +27,7 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
 
   double? selectedLatitude;
   double? selectedLongitude;
+  String selectedZipcode = '';
 
   String? fullNameError;
   String? nickNameError;
@@ -33,6 +36,16 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
   String? genderError;
   String? weightError;
   String? diseaseError;
+  String? addressError;
+
+  static const Color kPrimary = Color(0xFFEE711E);
+  static const Color kWhite = Color(0xFFFFFFFF);
+  static const Color kText = Color(0xFF564444);
+  static const Color kTopBar = Color(0xFFFFC59E);
+  static const Color kBackground = Color(0xFFFDF0E8);
+  static const Color kFieldFill = Color(0xFFF5F3F6);
+  static const Color kBottomBar = Color(0xFFFFC59E);
+  static const String kFont = 'Sarabun';
 
   final List<String> genderItems = ['ชาย', 'หญิง', 'ไม่ระบุ'];
 
@@ -80,49 +93,118 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
   ];
 
   String formatDate(DateTime? date) {
-    if (date == null) return 'วันเกิด';
-    return '${date.day} ${thaiMonths[date.month]} ${date.year + 543}';
+    if (date == null) return 'วัน/เดือน/ปีเกิด';
+    return BackendDataService.toThaiDate(date);
+  }
+
+  String _extractZipcode(String address) {
+    final match = RegExp(r'(\d{5})').firstMatch(address);
+    return match?.group(1) ?? '';
   }
 
   Future<void> pickBirthDate() async {
-    DateTime tempDate = selectedBirthDate ?? DateTime(1995, 7, 19);
-
+    DateTime tempDate = selectedBirthDate ?? DateTime(1967, 7, 19);
+    
     await showModalBottomSheet(
       context: context,
+      backgroundColor: kBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (context) {
-        return Container(
-          height: 320,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              const Text(
-                'เลือกวันเกิด',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              height: 350,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  const Text(
+                    'เลือกวันเกิด',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: kText,
+                      fontFamily: kFont,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    BackendDataService.toThaiDate(tempDate),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: kPrimary,
+                      fontWeight: FontWeight.w500,
+                      fontFamily: kFont,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        // วัน
+                        Expanded(
+                          child: CupertinoPicker(
+                            scrollController: FixedExtentScrollController(initialItem: tempDate.day - 1),
+                            itemExtent: 40,
+                            onSelectedItemChanged: (index) {
+                              setModalState(() {
+                                tempDate = DateTime(tempDate.year, tempDate.month, index + 1);
+                              });
+                            },
+                            children: List.generate(31, (index) => Center(child: Text('${index + 1}', style: const TextStyle(fontFamily: kFont)))),
+                          ),
+                        ),
+                        // เดือน
+                        Expanded(
+                          flex: 2,
+                          child: CupertinoPicker(
+                            scrollController: FixedExtentScrollController(initialItem: tempDate.month - 1),
+                            itemExtent: 40,
+                            onSelectedItemChanged: (index) {
+                              setModalState(() {
+                                tempDate = DateTime(tempDate.year, index + 1, tempDate.day);
+                              });
+                            },
+                            children: List.generate(12, (index) => Center(child: Text(thaiMonths[index + 1], style: const TextStyle(fontFamily: kFont)))),
+                          ),
+                        ),
+                        // ปี (พ.ศ.)
+                        Expanded(
+                          child: CupertinoPicker(
+                            scrollController: FixedExtentScrollController(initialItem: (tempDate.year + 543) - 2483),
+                            itemExtent: 40,
+                            onSelectedItemChanged: (index) {
+                              setModalState(() {
+                                tempDate = DateTime(2483 + index - 543, tempDate.month, tempDate.day);
+                              });
+                            },
+                            children: List.generate(100, (index) => Center(child: Text('${2483 + index}', style: const TextStyle(fontFamily: kFont)))),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        selectedBirthDate = tempDate;
+                        birthDateError = null;
+                      });
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kPrimary,
+                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    ),
+                    child: const Text('ตกลง', style: TextStyle(color: Colors.white, fontSize: 16, fontFamily: kFont, fontWeight: FontWeight.bold)),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: CupertinoDatePicker(
-                  mode: CupertinoDatePickerMode.date,
-                  initialDateTime: tempDate,
-                  minimumDate: DateTime(1940, 1, 1),
-                  maximumDate: DateTime.now(),
-                  onDateTimeChanged: (DateTime newDate) {
-                    tempDate = newDate;
-                  },
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    selectedBirthDate = tempDate;
-                    birthDateError = null;
-                  });
-                  Navigator.pop(context);
-                },
-                child: const Text('ตกลง'),
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -133,6 +215,10 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
 
     await showModalBottomSheet(
       context: context,
+      backgroundColor: kBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (context) {
         return Container(
           height: 320,
@@ -141,7 +227,12 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
             children: [
               const Text(
                 'เลือกน้ำหนัก',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: kText,
+                  fontFamily: kFont,
+                ),
               ),
               const SizedBox(height: 12),
               Expanded(
@@ -155,7 +246,15 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
                   },
                   children: List.generate(
                     131,
-                    (index) => Center(child: Text('${20 + index}')),
+                    (index) => Center(
+                      child: Text(
+                        '${20 + index}',
+                        style: const TextStyle(
+                          color: kText,
+                          fontFamily: kFont,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -167,7 +266,20 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
                   });
                   Navigator.pop(context);
                 },
-                child: const Text('ตกลง'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kPrimary,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                child: const Text(
+                  'ตกลง',
+                  style: TextStyle(
+                    color: kWhite,
+                    fontFamily: kFont,
+                  ),
+                ),
               ),
             ],
           ),
@@ -183,27 +295,40 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
     );
 
     if (result != null) {
+      final address = result['address'] ?? '';
       setState(() {
-        addressController.text = result['address'] ?? '';
+        addressController.text = address;
         selectedLatitude = result['latitude'];
         selectedLongitude = result['longitude'];
+        selectedZipcode = (result['zipcode'] ?? '').toString().trim();
+        if (selectedZipcode.isEmpty) {
+          selectedZipcode = _extractZipcode(address);
+        }
+        addressError = null;
       });
     }
   }
 
-  Widget buildInputBox({
+  Widget buildSingleBox({
     required Widget child,
-    EdgeInsetsGeometry? padding,
     bool hasError = false,
+    double height = 40,
+    EdgeInsetsGeometry padding =
+        const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+    AlignmentGeometry alignment = Alignment.center,
   }) {
     return Container(
+      height: height,
       width: double.infinity,
-      padding:
-          padding ?? const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      alignment: alignment,
+      padding: padding,
       decoration: BoxDecoration(
-        color: const Color(0xFFFCFAFF),
-        borderRadius: BorderRadius.circular(12),
-        border: hasError ? Border.all(color: const Color(0xFFF04444)) : null,
+        color: kFieldFill,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: hasError ? const Color(0xFFF04444) : kPrimary,
+          width: 1.2,
+        ),
       ),
       child: child,
     );
@@ -212,10 +337,14 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
   Widget buildFieldError(String? error) {
     if (error == null) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(left: 12, top: 4),
+      padding: const EdgeInsets.only(left: 8, top: 4),
       child: Text(
         error,
-        style: const TextStyle(color: const Color(0xFFF04444), fontSize: 12),
+        style: const TextStyle(
+          color: Color(0xFFF04444),
+          fontSize: 14,
+          fontFamily: kFont,
+        ),
       ),
     );
   }
@@ -279,14 +408,17 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
     selectedDiseaseList = _normalizeDiseaseSelections(updated);
   }
 
-  String _convertDiseaseToStorage() {
+  List<String> _convertDiseaseToList() {
     final actualValues = selectedDiseaseList
         .where((e) => e != null && e != 'ไม่มีโรค')
         .cast<String>()
         .toList();
 
-    if (actualValues.isEmpty) return 'ไม่มีโรค';
-    return actualValues.join('|');
+    if (actualValues.isEmpty) {
+      return ['ไม่มีโรค'];
+    }
+
+    return actualValues;
   }
 
   Widget buildDiseaseDropdownGroup() {
@@ -303,31 +435,47 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
             padding: EdgeInsets.only(
               bottom: index == selectedDiseaseList.length - 1 ? 0 : 10,
             ),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFCFAFF),
-                borderRadius: BorderRadius.circular(12),
-                border: diseaseError != null
-                    ? Border.all(color: const Color(0xFFF04444))
-                    : null,
-              ),
-              child: DropdownButtonFormField<String>(
-                value: selectedDiseaseList[index],
-                decoration: const InputDecoration(border: InputBorder.none),
-                hint: const Text('โรคประจำตัว'),
-                items: availableOptions.map((item) {
-                  return DropdownMenuItem<String>(
-                    value: item,
-                    child: Text(item, overflow: TextOverflow.ellipsis),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _updateDiseaseSelection(index: index, newValue: value);
-                    diseaseError = null;
-                  });
-                },
+            child: buildSingleBox(
+              hasError: diseaseError != null,
+              height: 40,
+              alignment: Alignment.centerLeft,
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: selectedDiseaseList[index],
+                  isExpanded: true,
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down,
+                    color: kPrimary,
+                  ),
+                  hint: const Text(
+                    'โรคประจำตัว',
+                    style: TextStyle(
+                      color: kText,
+                      fontSize: 14,
+                      fontFamily: kFont,
+                    ),
+                  ),
+                  items: availableOptions.map((item) {
+                    return DropdownMenuItem<String>(
+                      value: item,
+                      child: Text(
+                        item,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: kText,
+                          fontSize: 14,
+                          fontFamily: kFont,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _updateDiseaseSelection(index: index, newValue: value);
+                      diseaseError = null;
+                    });
+                  },
+                ),
               ),
             ),
           );
@@ -346,6 +494,7 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
       genderError = null;
       weightError = null;
       diseaseError = null;
+      addressError = null;
     });
 
     bool isValid = true;
@@ -385,6 +534,11 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
       isValid = false;
     }
 
+    if (addressController.text.trim().isEmpty) {
+      addressError = 'กรุณากรอกหรือเลือกที่อยู่';
+      isValid = false;
+    }
+
     setState(() {});
 
     if (!isValid) return;
@@ -396,8 +550,13 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
       birthDate: formatDate(selectedBirthDate),
       gender: selectedGender ?? '',
       weight: selectedWeight.toString(),
-      disease: _convertDiseaseToStorage(),
+      underlyingDiseases: _convertDiseaseToList(),
       address: addressController.text.trim(),
+      latitude: selectedLatitude ?? 0.0,
+      longitude: selectedLongitude ?? 0.0,
+      zipcode: selectedZipcode.isEmpty
+          ? _extractZipcode(addressController.text.trim())
+          : selectedZipcode,
       startDate: '',
       endDate: '',
       startTime: '',
@@ -423,6 +582,7 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
       caregiverRating: '',
       caregiverReviewCount: '',
       caregiverBio: '',
+      score: null,
     );
 
     Navigator.push(
@@ -442,299 +602,472 @@ class _addProfileElderly_oneState extends State<addProfileElderly_one> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFDF0E8),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                icon: const Icon(
-                  Icons.arrow_back_ios_new,
-                  color: Color(0xFF564444),
-                ),
-                label: const Text(
-                  'ข้อมูลผู้สูงอายุ',
-                  style: TextStyle(color: Color(0xFF564444)),
-                ),
+  Widget _buildTopBar() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              size: 20,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(width: 10),
+          const Text(
+            'ข้อมูลผู้สูงอายุ',
+            style: TextStyle(
+              color: kText,
+              fontSize: 16,
+              fontFamily: kFont,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileIcon() {
+    return const Center(
+      child: Icon(
+        Icons.account_circle_outlined,
+        size: 108,
+        color: kPrimary,
+      ),
+    );
+  }
+
+  Widget _buildEditableTextField({
+    required TextEditingController controller,
+    required String hint,
+    required String? errorText,
+    TextInputType? keyboardType,
+    void Function(String)? onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          height: 40,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: kFieldFill,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: errorText != null ? const Color(0xFFF04444) : kPrimary,
+              width: 1.2,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: TextField(
+            controller: controller,
+            keyboardType: keyboardType,
+            onChanged: onChanged,
+            textAlign: TextAlign.center,
+            cursorColor: kPrimary,
+            style: const TextStyle(
+              color: kText,
+              fontSize: 14,
+              fontFamily: kFont,
+            ),
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              disabledBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
+              focusedErrorBorder: InputBorder.none,
+              fillColor: Colors.transparent,
+              filled: false,
+              isDense: true,
+              isCollapsed: true,
+              contentPadding: EdgeInsets.zero,
+              hintText: hint,
+              hintStyle: const TextStyle(
+                color: kText,
+                fontSize: 14,
+                fontFamily: kFont,
               ),
-              const SizedBox(height: 8),
-              const Center(
-                child: Icon(
-                  Icons.account_circle_outlined,
-                  size: 110,
-                  color: Color(0xFFFCFAFF),
-                ),
+            ),
+          ),
+        ),
+        buildFieldError(errorText),
+      ],
+    );
+  }
+
+  Widget _buildDateField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: pickBirthDate,
+          child: buildSingleBox(
+            hasError: birthDateError != null,
+            height: 40,
+            child: Text(
+              formatDate(selectedBirthDate),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: kText,
+                fontSize: 14,
+                fontFamily: kFont,
               ),
-              const SizedBox(height: 20),
-              const Text(
-                'ข้อมูลสุขภาพพื้นฐาน',
-                style: TextStyle(fontSize: 18, color: Color(0xFF564444)),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        buildInputBox(
-                          hasError: fullNameError != null,
-                          child: TextField(
-                            controller: fullNameController,
-                            onChanged: (value) {
-                              if (fullNameError != null) {
-                                setState(() {
-                                  fullNameError = null;
-                                });
-                              }
-                            },
-                            decoration: const InputDecoration.collapsed(
-                              hintText: 'ชื่อ-นามสกุล',
-                            ),
-                          ),
-                        ),
-                        buildFieldError(fullNameError),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        buildInputBox(
-                          hasError: nickNameError != null,
-                          child: TextField(
-                            controller: nickNameController,
-                            onChanged: (value) {
-                              if (nickNameError != null) {
-                                setState(() {
-                                  nickNameError = null;
-                                });
-                              }
-                            },
-                            decoration: const InputDecoration.collapsed(
-                              hintText: 'ชื่อเล่น',
-                            ),
-                          ),
-                        ),
-                        buildFieldError(nickNameError),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        buildInputBox(
-                          hasError: phoneError != null,
-                          child: TextField(
-                            controller: phoneController,
-                            keyboardType: TextInputType.phone,
-                            onChanged: (value) {
-                              if (phoneError != null) {
-                                setState(() {
-                                  phoneError = null;
-                                });
-                              }
-                            },
-                            decoration: const InputDecoration.collapsed(
-                              hintText: 'เบอร์โทรศัพท์',
-                            ),
-                          ),
-                        ),
-                        buildFieldError(phoneError),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        buildInputBox(
-                          hasError: birthDateError != null,
-                          child: InkWell(
-                            onTap: pickBirthDate,
-                            child: Text(
-                              formatDate(selectedBirthDate),
-                              style: const TextStyle(
-                                color: Color(0xFF564444),
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ),
-                        buildFieldError(birthDateError),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFCFAFF),
-                            borderRadius: BorderRadius.circular(12),
-                            border: genderError != null
-                                ? Border.all(color: const Color(0xFFF04444))
-                                : null,
-                          ),
-                          child: DropdownButtonFormField<String>(
-                            value: selectedGender,
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                            ),
-                            hint: const Text('เพศ'),
-                            items: genderItems.map((item) {
-                              return DropdownMenuItem(
-                                value: item,
-                                child: Text(item),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                selectedGender = value;
-                                genderError = null;
-                              });
-                            },
-                          ),
-                        ),
-                        buildFieldError(genderError),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        buildInputBox(
-                          hasError: weightError != null,
-                          child: InkWell(
-                            onTap: pickWeightWheel,
-                            child: Text(
-                              'น้ำหนัก : $selectedWeight กิโลกรัม',
-                              style: const TextStyle(
-                                color: Color(0xFF564444),
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ),
-                        buildFieldError(weightError),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              buildDiseaseDropdownGroup(),
-              const SizedBox(height: 18),
-              const Text(
-                'ที่อยู่',
-                style: TextStyle(fontSize: 16, color: Color(0xFF564444)),
-              ),
-              const SizedBox(height: 10),
-              buildInputBox(
-                child: TextField(
-                  controller: addressController,
-                  readOnly: true,
-                  maxLines: 3,
-                  decoration: const InputDecoration.collapsed(
-                    hintText: 'เลือกจากแผนที่',
-                  ),
+            ),
+          ),
+        ),
+        buildFieldError(birthDateError),
+      ],
+    );
+  }
+
+  Widget _buildGenderField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        buildSingleBox(
+          hasError: genderError != null,
+          height: 40,
+          alignment: Alignment.centerLeft,
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: selectedGender,
+              isExpanded: true,
+              icon: const Icon(Icons.keyboard_arrow_down, color: kPrimary),
+              hint: const Text(
+                'เพศ',
+                style: TextStyle(
+                  color: kText,
+                  fontSize: 14,
+                  fontFamily: kFont,
                 ),
               ),
-              const SizedBox(height: 8),
-              InkWell(
-                onTap: pickLocationFromMap,
-                child: Container(
-                  height: 110,
-                  width: double.infinity,
-                  decoration: BoxDecoration(color: const Color(0xFFEBEBEB)),
-                  alignment: Alignment.center,
-                  child: const Text('แผนที่', style: TextStyle(fontSize: 18)),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton(
-                  onPressed: goNext,
-                  style: ElevatedButton.styleFrom(
-                    elevation: 0,
-                    backgroundColor: const Color(0xFFEE711E),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
+              items: genderItems.map((item) {
+                return DropdownMenuItem<String>(
+                  value: item,
+                  child: Text(
+                    item,
+                    style: const TextStyle(
+                      color: kText,
+                      fontSize: 14,
+                      fontFamily: kFont,
                     ),
                   ),
-                  child: const Text(
-                    'ถัดไป',
-                    style: TextStyle(color: Color(0xFF564444)),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  selectedGender = value;
+                  genderError = null;
+                });
+              },
+            ),
+          ),
+        ),
+        buildFieldError(genderError),
+      ],
+    );
+  }
+
+  Widget _buildWeightField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: pickWeightWheel,
+          child: buildSingleBox(
+            hasError: weightError != null,
+            height: 40,
+            child: Text(
+              'น้ำหนัก : $selectedWeight กก.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: kText,
+                fontSize: 14,
+                fontFamily: kFont,
+              ),
+            ),
+          ),
+        ),
+        buildFieldError(weightError),
+      ],
+    );
+  }
+
+  Widget _buildAddressSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'ที่อยู่',
+          style: TextStyle(
+            fontSize: 16,
+            color: kText,
+            fontFamily: kFont,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity,
+          height: 70,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: kFieldFill,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: addressError != null ? const Color(0xFFF04444) : kPrimary,
+              width: 1.2,
+            ),
+          ),
+          child: TextField(
+            controller: addressController,
+            maxLines: 3,
+            onChanged: (value) {
+              if (addressError != null) {
+                setState(() {
+                  addressError = null;
+                });
+              }
+              selectedLatitude = null;
+              selectedLongitude = null;
+            },
+            cursorColor: kPrimary,
+            style: const TextStyle(
+              color: kText,
+              fontSize: 14,
+              fontFamily: kFont,
+              height: 1.3,
+            ),
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              disabledBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
+              focusedErrorBorder: InputBorder.none,
+              fillColor: Colors.transparent,
+              filled: false,
+              isDense: true,
+              isCollapsed: true,
+              contentPadding: EdgeInsets.zero,
+              hintText: 'กรอกที่อยู่หรือเลือกจากแผนที่',
+              hintStyle: TextStyle(
+                color: kText,
+                fontSize: 14,
+                fontFamily: kFont,
+              ),
+            ),
+          ),
+        ),
+        buildFieldError(addressError),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: pickLocationFromMap,
+          child: Container(
+            width: double.infinity,
+            height: 98,
+            decoration: BoxDecoration(
+              color: kBackground,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: kPrimary, width: 1.2),
+            ),
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.map_outlined, color: kPrimary, size: 30),
+                SizedBox(height: 4),
+                Text(
+                  'เลือกจากแผนที่',
+                  style: TextStyle(
+                    color: kPrimary,
+                    fontSize: 14,
+                    fontFamily: kFont,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-              ),
-              const SizedBox(height: 30),
-            ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNextButton() {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: SizedBox(
+        width: 78,
+        height: 40,
+        child: ElevatedButton(
+          onPressed: goNext,
+          style: ElevatedButton.styleFrom(
+            elevation: 0,
+            backgroundColor: kPrimary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            padding: EdgeInsets.zero,
+          ),
+          child: const Text(
+            'ถัดไป',
+            style: TextStyle(
+              color: kWhite,
+              fontSize: 16,
+              fontFamily: kFont,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ),
-      bottomNavigationBar: Container(
-        height: 85,
-        decoration: const BoxDecoration(
-          color: Color(0xFFFCFAFF),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
+    );
+  }
+
+  Widget _buildBottomBar() {
+    return Container(
+      height: 95,
+      decoration: const BoxDecoration(
+        color: kBottomBar,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(38)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: const [
+          Icon(Icons.home, size: 42, color: kWhite),
+          Icon(Icons.notifications, size: 40, color: kPrimary),
+          Icon(Icons.account_circle, size: 46, color: kPrimary),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: kTopBar,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: kBackground,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildTopBar(),
+                const SizedBox(height: 10),
+                _buildProfileIcon(),
+                const SizedBox(height: 14),
+                const Text(
+                  'ข้อมูลสุขภาพพื้นฐาน',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: kText,
+                    fontFamily: kFont,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 5,
+                      child: _buildEditableTextField(
+                        controller: fullNameController,
+                        hint: 'ชื่อ - นามสกุล',
+                        errorText: fullNameError,
+                        onChanged: (value) {
+                          if (fullNameError != null) {
+                            setState(() {
+                              fullNameError = null;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 4,
+                      child: _buildEditableTextField(
+                        controller: nickNameController,
+                        hint: 'ชื่อเล่น',
+                        errorText: nickNameError,
+                        onChanged: (value) {
+                          if (nickNameError != null) {
+                            setState(() {
+                              nickNameError = null;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 5,
+                      child: _buildEditableTextField(
+                        controller: phoneController,
+                        hint: 'เบอร์โทรศัพท์',
+                        errorText: phoneError,
+                        keyboardType: TextInputType.phone,
+                        onChanged: (value) {
+                          if (phoneError != null) {
+                            setState(() {
+                              phoneError = null;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 5,
+                      child: _buildDateField(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: _buildGenderField(),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 7,
+                      child: _buildWeightField(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                buildDiseaseDropdownGroup(),
+                const SizedBox(height: 16),
+                _buildAddressSection(),
+                const SizedBox(height: 20),
+                _buildNextButton(),
+                const SizedBox(height: 26),
+              ],
+            ),
+          ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.home, size: 34, color: Color(0xFFEE711E)),
-            ),
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(
-                Icons.notifications,
-                size: 38,
-                color: Color(0xFFEE711E),
-              ),
-            ),
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(
-                Icons.account_circle,
-                size: 42,
-                color: Color(0xFFEE711E),
-              ),
-            ),
-          ],
-        ),
+        bottomNavigationBar: _buildBottomBar(),
       ),
     );
   }

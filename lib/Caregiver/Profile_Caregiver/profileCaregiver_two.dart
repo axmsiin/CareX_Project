@@ -1,7 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/question.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/caregiverData.dart';
+import 'package:carex/Caregiver/Profile_Caregiver/caregiver_store.dart';
 
 class profileCaregiver_two extends StatefulWidget {
   final caregiverData profile;
@@ -13,7 +15,17 @@ class profileCaregiver_two extends StatefulWidget {
 }
 
 class _profileCaregiver_twoState extends State<profileCaregiver_two> {
-  final List<String> days = [
+  static const Color kPrimary = Color(0xFFEE711E);
+  static const Color kWhite = Color(0xFFFFFFFF);
+  static const Color kText = Color(0xFF564444);
+  static const Color kTopBar = Color(0xFFFFC59E);
+  static const Color kBackground = Color(0xFFFDF0E8);
+  static const Color kFieldFill = Color(0xFFF5F3F6);
+  static const Color kBottomBar = Color(0xFFFFC59E);
+  static const Color kError = Color(0xFFE95257);
+  static const String kFont = 'Sarabun';
+
+  final List<String> days = const [
     'วันจันทร์',
     'วันอังคาร',
     'วันพุธ',
@@ -25,14 +37,13 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
 
   final Set<String> selectedDays = {};
 
-  final List<String> degrees = [
+  final List<String> degrees = const [
     'Practical Nurse (PN)',
     'Nursing Assistant (NA)',
     'Caregiver (CG)',
   ];
 
   String? selectedDegree;
-
   bool allDayAvailable = false;
 
   TimeOfDay startTime = const TimeOfDay(hour: 9, minute: 0);
@@ -45,7 +56,7 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
   String? graduationDateError;
   String? timeError;
 
-  final List<String> thaiMonths = [
+  final List<String> thaiMonths = const [
     '',
     'มกราคม',
     'กุมภาพันธ์',
@@ -91,7 +102,16 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
     }
 
     if (widget.profile.degree.isNotEmpty) {
-      selectedDegree = widget.profile.degree;
+      final saved = widget.profile.degree.trim();
+      if (saved == 'Practical Nurse') {
+        selectedDegree = 'Practical Nurse (PN)';
+      } else if (saved == 'Nurse Aide') {
+        selectedDegree = 'Nursing Assistant (NA)';
+      } else if (saved == 'Caregiver') {
+        selectedDegree = 'Caregiver (CG)';
+      } else {
+        selectedDegree = saved;
+      }
     }
 
     graduationDate = widget.profile.graduationDate;
@@ -106,6 +126,19 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
     final hour = time.hour.toString().padLeft(2, '0');
     final minute = time.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
+  }
+
+  String normalizedDegreeForSave(String? value) {
+    switch (value) {
+      case 'Practical Nurse (PN)':
+        return 'Practical Nurse';
+      case 'Nursing Assistant (NA)':
+        return 'Nurse Aide';
+      case 'Caregiver (CG)':
+        return 'Caregiver';
+      default:
+        return value ?? '';
+    }
   }
 
   List<Map<String, dynamic>> buildTimestampPayload() {
@@ -124,7 +157,22 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
   Future<void> pickTime({required bool isStartTime}) async {
     final initial = isStartTime ? startTime : endTime;
 
-    final picked = await showTimePicker(context: context, initialTime: initial);
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: kPrimary,
+              onPrimary: kWhite,
+              onSurface: kText,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
 
     if (picked != null) {
       setState(() {
@@ -143,6 +191,10 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
 
     await showModalBottomSheet(
       context: context,
+      backgroundColor: kBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (context) {
         return Container(
           height: 320,
@@ -151,18 +203,44 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
             children: [
               const Text(
                 'เลือกวันที่จบการศึกษา',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: kText,
+                  fontFamily: kFont,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '${tempDate.day} ${thaiMonths[tempDate.month]} ${tempDate.year + 543}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: kPrimary,
+                  fontWeight: FontWeight.w500,
+                  fontFamily: kFont,
+                ),
               ),
               const SizedBox(height: 12),
               Expanded(
-                child: CupertinoDatePicker(
-                  mode: CupertinoDatePickerMode.date,
-                  initialDateTime: tempDate,
-                  minimumDate: DateTime(1950, 1, 1),
-                  maximumDate: DateTime.now(),
-                  onDateTimeChanged: (DateTime newDate) {
-                    tempDate = newDate;
-                  },
+                child: CupertinoTheme(
+                  data: const CupertinoThemeData(
+                    textTheme: CupertinoTextThemeData(
+                      dateTimePickerTextStyle: TextStyle(
+                        fontSize: 14,
+                        color: kText,
+                        fontFamily: kFont,
+                      ),
+                    ),
+                  ),
+                  child: CupertinoDatePicker(
+                    mode: CupertinoDatePickerMode.date,
+                    initialDateTime: tempDate,
+                    minimumDate: DateTime(1950, 1, 1),
+                    maximumDate: DateTime.now(),
+                    onDateTimeChanged: (DateTime newDate) {
+                      tempDate = newDate;
+                    },
+                  ),
                 ),
               ),
               ElevatedButton(
@@ -173,7 +251,20 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
                   });
                   Navigator.pop(context);
                 },
-                child: const Text('ตกลง'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kPrimary,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                child: const Text(
+                  'ตกลง',
+                  style: TextStyle(
+                    color: kWhite,
+                    fontFamily: kFont,
+                  ),
+                ),
               ),
             ],
           ),
@@ -192,9 +283,12 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
       padding:
           padding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFCFAFF),
+        color: kFieldFill,
         borderRadius: BorderRadius.circular(14),
-        border: hasError ? Border.all(color: const Color(0xFFF04444)) : null,
+        border: Border.all(
+          color: hasError ? kError : kPrimary,
+          width: 1.2,
+        ),
       ),
       child: child,
     );
@@ -206,7 +300,11 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
       padding: const EdgeInsets.only(left: 12, top: 4),
       child: Text(
         error,
-        style: const TextStyle(color: Color(0xFFF04444), fontSize: 12),
+        style: const TextStyle(
+          color: kError,
+          fontSize: 14,
+          fontFamily: kFont,
+        ),
       ),
     );
   }
@@ -229,24 +327,30 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
       },
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFFFCFAFF),
+          color: kFieldFill,
           borderRadius: BorderRadius.circular(14),
-          border: selectedDaysError != null
-              ? Border.all(color: const Color(0xFFF04444))
-              : null,
+          border: Border.all(
+            color: selectedDaysError != null ? kError : kPrimary,
+            width: 1.2,
+          ),
         ),
         child: Row(
           children: [
             Icon(
               isSelected ? Icons.check_box : Icons.check_box_outline_blank,
-              color: const Color(0xFFEE711E),
+              color: kPrimary,
+              size: 24,
             ),
             const SizedBox(width: 10),
             Text(
               day,
-              style: const TextStyle(fontSize: 16, color: Color(0xFF564444)),
+              style: const TextStyle(
+                fontSize: 14,
+                color: kText,
+                fontFamily: kFont,
+              ),
             ),
           ],
         ),
@@ -266,24 +370,30 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
       },
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFFCFAFF),
+          color: kFieldFill,
           borderRadius: BorderRadius.circular(14),
-          border: selectedDegreeError != null
-              ? Border.all(color: const Color(0xFFF04444))
-              : null,
+          border: Border.all(
+            color: selectedDegreeError != null ? kError : kPrimary,
+            width: 1.2,
+          ),
         ),
         child: Row(
           children: [
             Icon(
               isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-              color: const Color(0xFFEE711E),
+              color: kPrimary,
+              size: 24,
             ),
             const SizedBox(width: 10),
             Text(
               degree,
-              style: const TextStyle(fontSize: 16, color: Color(0xFF564444)),
+              style: const TextStyle(
+                fontSize: 14,
+                color: kText,
+                fontFamily: kFont,
+              ),
             ),
           ],
         ),
@@ -291,7 +401,7 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
     );
   }
 
-  void goNext() {
+  Future<void> goNext() async {
     setState(() {
       selectedDaysError = null;
       selectedDegreeError = null;
@@ -327,7 +437,6 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
     }
 
     setState(() {});
-
     if (!isValid) return;
 
     widget.profile.availableDays = selectedDays.toList();
@@ -335,8 +444,12 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
     widget.profile.startTime =
         allDayAvailable ? '00:00' : formatTime(startTime);
     widget.profile.endTime = allDayAvailable ? '00:00' : formatTime(endTime);
-    widget.profile.degree = selectedDegree ?? '';
+    widget.profile.degree = normalizedDegreeForSave(selectedDegree);
     widget.profile.graduationDate = graduationDate;
+
+    await CaregiverStore.save(widget.profile);
+
+    if (!mounted) return;
 
     Navigator.push(
       context,
@@ -346,204 +459,249 @@ class _profileCaregiver_twoState extends State<profileCaregiver_two> {
     );
   }
 
+  Widget _buildTopBar() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              color: Colors.black,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            'ย้อนกลับ',
+            style: TextStyle(
+              color: kText,
+              fontSize: 16,
+              fontFamily: kFont,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomBar() {
+    return Container(
+      height: 95,
+      decoration: const BoxDecoration(
+        color: kBottomBar,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(38)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: const [
+          Icon(Icons.home, size: 40, color: kPrimary),
+          Icon(Icons.notifications, size: 40, color: kPrimary),
+          Icon(Icons.account_circle, size: 44, color: kWhite),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFDF0E8),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                icon: const Icon(
-                  Icons.arrow_back_ios_new,
-                  color: Color(0xFF564444),
+    final displayTimeText = allDayAvailable
+        ? 'เวลา : ตลอดทั้งวัน'
+        : 'เวลา : ${formatTime(startTime)} - ${formatTime(endTime)} น.';
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: kTopBar,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: kBackground,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildTopBar(),
+                const SizedBox(height: 22),
+                const Text(
+                  'วันและเวลาที่สะดวก',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: kText,
+                    fontFamily: kFont,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-                label: const Text(
-                  'ย้อนกลับ',
-                  style: TextStyle(color: Color(0xFF564444)),
+                const SizedBox(height: 14),
+                ...days.map(
+                  (day) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: buildDayBox(day),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'วันและเวลาที่สะดวก',
-                style: TextStyle(fontSize: 18, color: Color(0xFF564444)),
-              ),
-              const SizedBox(height: 14),
-              ...days.map(
-                (day) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: buildDayBox(day),
-                ),
-              ),
-              buildFieldError(selectedDaysError),
-              const SizedBox(height: 6),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  buildSelectBox(
-                    hasError: timeError != null,
-                    child: Column(
-                      children: [
-                        CheckboxListTile(
-                          value: allDayAvailable,
-                          onChanged: (value) {
-                            setState(() {
-                              allDayAvailable = value ?? false;
-                              if (allDayAvailable) {
-                                timeError = null;
-                              }
-                            });
-                          },
-                          contentPadding: EdgeInsets.zero,
-                          controlAffinity: ListTileControlAffinity.leading,
-                          title: const Text(
-                            'สะดวกตลอดเวลา',
-                            style: TextStyle(color: Color(0xFF564444)),
+                buildFieldError(selectedDaysError),
+                const SizedBox(height: 6),
+                SizedBox(
+                  width: 176,
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        allDayAvailable = !allDayAvailable;
+                        if (allDayAvailable) {
+                          timeError = null;
+                        }
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: kFieldFill,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: kPrimary, width: 1.2),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            allDayAvailable
+                                ? Icons.check_box
+                                : Icons.check_box_outline_blank,
+                            color: kPrimary,
+                            size: 24,
                           ),
-                          activeColor: const Color(0xFFEE711E),
-                        ),
-                        if (!allDayAvailable)
-                          Row(
-                            children: [
-                              Expanded(
-                                child: InkWell(
-                                  onTap: () => pickTime(isStartTime: true),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 10,
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      formatTime(startTime),
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        color: Color(0xFF564444),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const Text(
-                                ' - ',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: Color(0xFF564444),
-                                ),
-                              ),
-                              Expanded(
-                                child: InkWell(
-                                  onTap: () => pickTime(isStartTime: false),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 10,
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      formatTime(endTime),
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        color: Color(0xFF564444),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const Text(
-                                ' น.',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Color(0xFF564444),
-                                ),
-                              ),
-                            ],
+                          const SizedBox(width: 10),
+                          const Text(
+                            'สะดวกทุกช่วงเวลา',
+                            style: TextStyle(
+                              color: kText,
+                              fontSize: 14,
+                              fontFamily: kFont,
+                            ),
                           ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                  buildFieldError(timeError),
-                ],
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'วุฒิประกาศนียบัตร',
-                style: TextStyle(fontSize: 18, color: Color(0xFF564444)),
-              ),
-              const SizedBox(height: 14),
-              ...degrees.map(
-                (degree) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: buildDegreeBox(degree),
                 ),
-              ),
-              buildFieldError(selectedDegreeError),
-              const SizedBox(height: 10),
-              const Text(
-                'วันที่จบการศึกษา',
-                style: TextStyle(fontSize: 18, color: Color(0xFF564444)),
-              ),
-              const SizedBox(height: 14),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  InkWell(
-                    onTap: pickGraduationDate,
-                    child: buildSelectBox(
-                      hasError: graduationDateError != null,
-                      child: Text(
-                        formatThaiDate(graduationDate),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFF564444),
+                const SizedBox(height: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    buildSelectBox(
+                      hasError: timeError != null,
+                      child: InkWell(
+                        onTap: allDayAvailable
+                            ? null
+                            : () async {
+                                await pickTime(isStartTime: true);
+                                if (!mounted) return;
+                                await pickTime(isStartTime: false);
+                              },
+                        child: Text(
+                          displayTimeText,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: allDayAvailable ? kText : kText,
+                            fontFamily: kFont,
+                          ),
+                        ),
+                      ),
+                    ),
+                    buildFieldError(timeError),
+                  ],
+                ),
+                const SizedBox(height: 22),
+                const Text(
+                  'วุฒิประกาศนียบัตร',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: kText,
+                    fontFamily: kFont,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                ...degrees.map(
+                  (degree) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: buildDegreeBox(degree),
+                  ),
+                ),
+                buildFieldError(selectedDegreeError),
+                const SizedBox(height: 10),
+                const Text(
+                  'วันที่จบการศึกษา',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: kText,
+                    fontFamily: kFont,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    InkWell(
+                      onTap: pickGraduationDate,
+                      child: buildSelectBox(
+                        hasError: graduationDateError != null,
+                        child: Text(
+                          formatThaiDate(graduationDate),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: kText,
+                            fontFamily: kFont,
+                          ),
+                        ),
+                      ),
+                    ),
+                    buildFieldError(graduationDateError),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: SizedBox(
+                    width: 86,
+                    height: 40,
+                    child: ElevatedButton(
+                      onPressed: goNext,
+                      style: ElevatedButton.styleFrom(
+                        elevation: 0,
+                        backgroundColor: kPrimary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                      child: const Text(
+                        'ถัดไป',
+                        style: TextStyle(
+                          color: kWhite,
+                          fontFamily: kFont,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
                   ),
-                  buildFieldError(graduationDateError),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton(
-                  onPressed: goNext,
-                  style: ElevatedButton.styleFrom(
-                    elevation: 0,
-                    backgroundColor: const Color(0xFFEE711E),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                  ),
-                  child: const Text(
-                    'ถัดไป',
-                    style: TextStyle(color: Color(0xFF564444)),
-                  ),
                 ),
-              ),
-              const SizedBox(height: 30),
-            ],
+                const SizedBox(height: 30),
+              ],
+            ),
           ),
         ),
-      ),
-      bottomNavigationBar: Container(
-        height: 80,
-        decoration: const BoxDecoration(
-          color: Color(0xFFFCFAFF),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            Icon(Icons.home, size: 36, color: Color(0xFFEE711E)),
-            Icon(Icons.notifications, size: 34, color: Color(0xFFEE711E)),
-            Icon(Icons.account_circle, size: 36, color: Color(0xFFEE711E)),
-          ],
-        ),
+        bottomNavigationBar: _buildBottomBar(),
       ),
     );
   }

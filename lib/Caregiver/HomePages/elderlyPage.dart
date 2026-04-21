@@ -16,13 +16,22 @@ class elderlyPage extends StatelessWidget {
     required this.matchedElders,
   });
 
+  static const Color _topBarColor = Color(0xFFFFC59E);
+  static const Color _backgroundColor = Color(0xFFFDF0E8);
+  static const Color _textColor = Color(0xFF564444);
+  static const Color _borderColor = Color(0xFFEE711E);
+  static const Color _boxColor = Color(0xFFFCFAFF);
+
+  static const String _fontFamily = 'Sarabun';
+
   Widget _buildBox(String text, {Widget? trailing}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFCFAFF),
-        borderRadius: BorderRadius.circular(12),
+        color: _boxColor,
+        border: Border.all(color: _borderColor, width: 1.2),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
@@ -30,8 +39,9 @@ class elderlyPage extends StatelessWidget {
             child: Text(
               text,
               style: const TextStyle(
+                fontFamily: _fontFamily,
                 fontSize: 14,
-                color: Color(0xFF564444),
+                color: _textColor,
               ),
             ),
           ),
@@ -74,155 +84,180 @@ class elderlyPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFDF0E8),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              InkWell(
-                onTap: () => Navigator.pop(context),
-                child: const Row(
+      backgroundColor: _backgroundColor,
+      body: Column(
+        children: [
+          Container(
+            color: _topBarColor,
+            child: SafeArea(
+              bottom: false,
+              child: const SizedBox(height: 8),
+            ),
+          ),
+          Expanded(
+            child: SafeArea(
+              top: false,
+              child: SingleChildScrollView(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.arrow_back_ios_new,
-                      size: 18,
-                      color: Color(0xFF564444),
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'ข้อมูลผู้สูงอายุที่ดูแล',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Color(0xFF564444),
+                    InkWell(
+                      onTap: () => Navigator.pop(context),
+                      child: const Row(
+                        children: [
+                          Icon(
+                            Icons.arrow_back_ios_new,
+                            size: 18,
+                            color: _textColor,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'ข้อมูลผู้สูงอายุที่ดูแล',
+                            style: TextStyle(
+                              fontFamily: _fontFamily,
+                              fontSize: 16,
+                              color: _textColor,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                    const SizedBox(height: 18),
+                    const Center(
+                      child: Icon(
+                        Icons.account_circle_outlined,
+                        size: 90,
+                        color: _borderColor,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'ข้อมูลสุขภาพพื้นฐาน',
+                      style: TextStyle(
+                        fontFamily: _fontFamily,
+                        fontSize: 16,
+                        color: _textColor,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildBox(elderly.fullName),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(child: _buildBox(elderly.phone)),
+                        const SizedBox(width: 10),
+                        Expanded(child: _buildBox(elderly.birthDateText)),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildBox(
+                            elderly.gender,
+                            trailing: const Icon(
+                              Icons.keyboard_arrow_down,
+                              color: _borderColor,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _buildBox('น้ำหนัก : ${elderly.weightText}'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    _buildBox(
+                      elderly.chronicDiseaseText,
+                      trailing: const Icon(
+                        Icons.keyboard_arrow_down,
+                        color: _borderColor,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'ที่อยู่',
+                      style: TextStyle(
+                        fontFamily: _fontFamily,
+                        fontSize: 16,
+                        color: _textColor,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildBox(elderly.address),
+                    const SizedBox(height: 6),
+                    Container(
+                      width: double.infinity,
+                      height: 98,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: _backgroundColor,
+                        border: Border.all(color: _borderColor, width: 1.2),
+                      ),
+                      child: const Text(
+                        'แผนที่',
+                        style: TextStyle(
+                          fontFamily: _fontFamily,
+                          fontSize: 14,
+                          color: _textColor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'วันและเวลาที่จะรับบริการ',
+                      style: TextStyle(
+                        fontFamily: _fontFamily,
+                        fontSize: 16,
+                        color: _textColor,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildBox(elderly.serviceDateText),
+                    const SizedBox(height: 10),
+                    _buildBox(elderly.serviceTimeText),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'ราคาค่าจ้าง',
+                      style: TextStyle(
+                        fontFamily: _fontFamily,
+                        fontSize: 16,
+                        color: _textColor,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildBox(elderly.wageText),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'ความต้องการในการดูแล',
+                      style: TextStyle(
+                        fontFamily: _fontFamily,
+                        fontSize: 16,
+                        color: _textColor,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ...elderly.careNeeds.map(
+                      (item) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _buildBox(item),
+                      ),
+                    ),
+                    const SizedBox(height: 30),
                   ],
                 ),
               ),
-              const SizedBox(height: 18),
-              const Center(
-                child: Icon(
-                  Icons.account_circle_outlined,
-                  size: 90,
-                  color: Color(0xFFFCFAFF),
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'ข้อมูลสุขภาพพื้นฐาน',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF564444),
-                ),
-              ),
-              const SizedBox(height: 12),
-              _buildBox(elderly.fullName),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(child: _buildBox(elderly.phone)),
-                  const SizedBox(width: 10),
-                  Expanded(child: _buildBox(elderly.birthDateText)),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildBox(
-                      elderly.gender,
-                      trailing: const Icon(
-                        Icons.keyboard_arrow_down,
-                        color: Color(0xFF564444),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _buildBox('น้ำหนัก : ${elderly.weightText}'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              _buildBox(
-                elderly.chronicDiseaseText,
-                trailing: const Icon(
-                  Icons.keyboard_arrow_down,
-                  color: Color(0xFF564444),
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'ที่อยู่',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF564444),
-                ),
-              ),
-              const SizedBox(height: 10),
-              _buildBox(elderly.address),
-              const SizedBox(height: 6),
-              Container(
-                width: double.infinity,
-                height: 98,
-                alignment: Alignment.center,
-                color: const Color(0xFFEBEBEB),
-                child: const Text(
-                  'แผนที่',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF564444),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'วันและเวลาที่จะรับบริการ',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF564444),
-                ),
-              ),
-              const SizedBox(height: 10),
-              _buildBox(elderly.serviceDateText),
-              const SizedBox(height: 10),
-              _buildBox(elderly.serviceTimeText),
-              const SizedBox(height: 18),
-              const Text(
-                'ราคาค่าจ้าง',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF564444),
-                ),
-              ),
-              const SizedBox(height: 10),
-              _buildBox(elderly.wageText),
-              const SizedBox(height: 18),
-              const Text(
-                'ความต้องการในการดูแล',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF564444),
-                ),
-              ),
-              const SizedBox(height: 10),
-              ...elderly.careNeeds.map(
-                (item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _buildBox(item),
-                ),
-              ),
-              const SizedBox(height: 30),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
       bottomNavigationBar: Container(
         height: 85,
         decoration: const BoxDecoration(
-          color: Color(0xFFFCFAFF),
+          color: _topBarColor,
           borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
         ),
         child: Row(
@@ -233,7 +268,7 @@ class elderlyPage extends StatelessWidget {
               icon: const Icon(
                 Icons.home,
                 size: 38,
-                color: Color(0xFFEE711E),
+                color: Colors.white,
               ),
             ),
             IconButton(
@@ -241,7 +276,7 @@ class elderlyPage extends StatelessWidget {
               icon: const Icon(
                 Icons.notifications,
                 size: 38,
-                color: Color(0xFFEE711E),
+                color: _borderColor,
               ),
             ),
             IconButton(
@@ -249,7 +284,7 @@ class elderlyPage extends StatelessWidget {
               icon: const Icon(
                 Icons.account_circle,
                 size: 42,
-                color: Color(0xFFEE711E),
+                color: _borderColor,
               ),
             ),
           ],

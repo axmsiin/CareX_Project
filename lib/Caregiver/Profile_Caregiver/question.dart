@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/caregiverData.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/profileCaregiver.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/caregiver_store.dart';
+import 'package:carex/controllers/profile_controller.dart';
+import 'package:carex/models/caregiver_profile_request.dart';
+import 'package:carex/services/app_session.dart';
 import 'package:carex/services/backend_data_service.dart';
 
 class question extends StatefulWidget {
@@ -17,12 +21,22 @@ class question extends StatefulWidget {
 }
 
 class _questionState extends State<question> {
-  final List<Map<String, String>> questions = [
+  static const Color kPrimary = Color(0xFFEE711E);
+  static const Color kWhite = Color(0xFFFFFFFF);
+  static const Color kText = Color(0xFF564444);
+  static const Color kTopBar = Color(0xFFFFC59E);
+  static const Color kBackground = Color(0xFFFDF0E8);
+  static const Color kFieldFill = Color(0xFFF5F3F6);
+  static const Color kBottomBar = Color(0xFFFFC59E);
+  static const String kFont = 'Sarabun';
+
+  List<Map<String, String>> questions = [
     {
       'question':
           'ผู้สูงอายุที่คุณดูแลปฏิเสธจะทำกิจกรรมที่กำหนดในวันนั้น และดูมีอารมณ์ไม่ดี คุณมักจะ…',
-      'a': 'หยุดก่อนและถามว่าเขารู้สึกอย่างไรเพื่อทำความเข้าใจสิ่งที่เกิดขึ้น',
-      'b': 'อธิบายสั้นๆว่าทำไมกิจกรรมนี้จึงสำคัญและค่อยๆชวนให้เขาลองทำ',
+      'a':
+          'หยุดก่อนและถามว่าเขารู้สึกอย่างไร\nเพื่อทำความเข้าใจสิ่ง\nที่เกิดขึ้น',
+      'b': 'อธิบายสั้นๆ\nว่าทำไมกิจกรรมนี้\nจึงสำคัญ\nและค่อยๆ\nชวนให้เขาลองทำ',
     },
     {
       'question': 'แจ้งกะทันหันว่าวันนี้มีการเปลี่ยนแปลงตารางกิจวัตร คุณ…',
@@ -58,6 +72,49 @@ class _questionState extends State<question> {
   int currentQuestionIndex = 0;
   String? selectedAnswer;
   final List<String> answers = [];
+  bool isSubmitting = false;
+
+  static const List<String> thaiMonths = [
+    '',
+    'มกราคม',
+    'กุมภาพันธ์',
+    'มีนาคม',
+    'เมษายน',
+    'พฤษภาคม',
+    'มิถุนายน',
+    'กรกฎาคม',
+    'สิงหาคม',
+    'กันยายน',
+    'ตุลาคม',
+    'พฤศจิกายน',
+    'ธันวาคม',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadQuestions();
+  }
+
+  Future<void> _loadQuestions() async {
+    final apiQuestions =
+        await BackendDataService.fetchQuestions('question_caregiver');
+    if (apiQuestions.isEmpty || !mounted) return;
+
+    setState(() {
+      questions = apiQuestions.map((q) {
+        return {
+          'question': (q['question'] ?? '').trim(),
+          'a': (q['a'] ?? '').trim(),
+          'b': (q['b'] ?? '').trim(),
+        };
+      }).toList();
+    });
+  }
+
+  String _formatThaiBirthday(DateTime date) {
+    return '${date.day} ${thaiMonths[date.month]} ${date.year + 543}';
+  }
 
   int _calculateScore(List<String> selectedAnswers) {
     final aCount = selectedAnswers.where((e) => e == 'A').length;
@@ -68,7 +125,7 @@ class _questionState extends State<question> {
   }
 
   Future<void> nextQuestion() async {
-    if (selectedAnswer == null) return;
+    if (selectedAnswer == null || isSubmitting) return;
 
     answers.add(selectedAnswer!);
 
@@ -78,32 +135,207 @@ class _questionState extends State<question> {
         selectedAnswer = null;
       });
     } else {
-      final score = _calculateScore(answers);
-      final now = DateTime.now();
+      showFinishDialog();
+    }
+  }
 
-      widget.profile.score = score;
-      await CaregiverStore.save(widget.profile);
+  void showFinishDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 48),
+          child: Container(
+            decoration: BoxDecoration(
+              color: kFieldFill,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: kPrimary, width: 1.2),
+            ),
+            child: Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 24, 18, 18),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(height: 6),
+                      const Text(
+                        '*หากกดยืนยันแล้ว\nข้อมูลของคุณจะถูกใช้ในการ Matching\nให้แก่ผู้สูงอายุ',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: kText,
+                          fontSize: 14,
+                          height: 1.28,
+                          fontWeight: FontWeight.w500,
+                          fontFamily: kFont,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: SizedBox(
+                          width: 86,
+                          height: 32,
+                          child: ElevatedButton(
+                            onPressed: isSubmitting ? null : submitProfileAndFinish,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF35CC2D),
+                              elevation: 0,
+                              padding: EdgeInsets.zero,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                            ),
+                            child: Text(
+                              isSubmitting ? 'รอ...' : 'ตกลง',
+                              style: const TextStyle(
+                                color: kWhite,
+                                fontSize: 14,
+                                fontFamily: kFont,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: isSubmitting
+                        ? null
+                        : () {
+                            Navigator.pop(dialogContext);
+                          },
+                    child: const Padding(
+                      padding: EdgeInsets.all(2),
+                      child: Icon(
+                        Icons.close,
+                        size: 22,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
-      await BackendDataService.submitQuestionScore(
-        target: 'caregiver',
-        score: score,
-        relatedId: widget.profile.caregiverId,
-        answers: answers,
-      );
+  Future<void> submitProfileAndFinish() async {
+    final score = _calculateScore(answers);
 
-      await BackendDataService.updateCaregiverScore(
-        score: score,
-        scoreDate: now,
-      );
-
+    if (widget.profile.birthDate == null) {
       if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => profileCaregiver(profile: widget.profile),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'ไม่พบวันเกิดของผู้ดูแล กรุณากรอกข้อมูลใหม่',
+            style: TextStyle(fontFamily: kFont),
+          ),
         ),
       );
+      return;
     }
+
+    final token = await AppSession.getToken();
+    if (token == null || token.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'ไม่พบ token กรุณาเข้าสู่ระบบใหม่',
+            style: TextStyle(fontFamily: kFont),
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      isSubmitting = true;
+    });
+
+    widget.profile.score = score;
+    await CaregiverStore.save(widget.profile);
+
+    final request = CaregiverProfileRequest(
+      fullname: widget.profile.fullName.trim(),
+      alias: widget.profile.nickName.trim(),
+      tel: widget.profile.phone.trim(),
+      gender: widget.profile.gender.trim(),
+      weight: widget.profile.weight,
+      height: widget.profile.height,
+      address: widget.profile.address.trim(),
+      latitude: widget.profile.latitude,
+      longitude: widget.profile.longitude,
+      province: widget.profile.province.trim(),
+      birthday: _formatThaiBirthday(widget.profile.birthDate!),
+      score: score,
+      timestamp: widget.profile.availableDays
+          .map(
+            (day) => {
+              'day': day,
+              'start_time': widget.profile.allDayAvailable
+                  ? '00:00'
+                  : widget.profile.startTime,
+              'end_time': widget.profile.allDayAvailable
+                  ? '00:00'
+                  : widget.profile.endTime,
+            },
+          )
+          .toList(),
+      certificateType: widget.profile.degree.trim(),
+      certificateDate: widget.profile.graduationDate == null
+          ? ''
+          : _formatThaiBirthday(widget.profile.graduationDate!),
+    );
+
+    final result = await ProfileController.createCaregiverProfile(
+      request: request,
+      token: token,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      isSubmitting = false;
+    });
+
+    if (!result.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result.message,
+            style: const TextStyle(fontFamily: kFont),
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (result.caregiverId != null && result.caregiverId!.isNotEmpty) {
+      await AppSession.saveCaregiverId(result.caregiverId!);
+    }
+
+    if (!mounted) return;
+    Navigator.of(context).pop(); // ปิด dialog
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => profileCaregiver(profile: widget.profile),
+      ),
+    );
   }
 
   Widget buildAnswerBox({
@@ -113,14 +345,15 @@ class _questionState extends State<question> {
     required VoidCallback onTap,
   }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: isSubmitting ? null : onTap,
       child: Container(
-        width: 145,
-        height: 190,
+        width: 160,
+        height: 168,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFEE711E) : const Color(0xFFFCFAFF),
-          borderRadius: BorderRadius.circular(16),
+          color: isSelected ? kPrimary : kFieldFill,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: kPrimary, width: 1.2),
         ),
         child: Column(
           children: [
@@ -128,19 +361,23 @@ class _questionState extends State<question> {
               label,
               style: TextStyle(
                 fontSize: 28,
-                color: isSelected ? Colors.white : const Color(0xFF564444),
+                color: isSelected ? kWhite : kText,
+                fontFamily: kFont,
+                fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Expanded(
               child: Center(
                 child: Text(
                   text,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 15,
-                    height: 1.3,
-                    color: isSelected ? Colors.white : const Color(0xFF564444),
+                    fontSize: 14,
+                    height: 1.28,
+                    color: isSelected ? kWhite : kText,
+                    fontFamily: kFont,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
@@ -151,137 +388,189 @@ class _questionState extends State<question> {
     );
   }
 
+  Widget _buildTopBar() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: isSubmitting
+                ? null
+                : () {
+                    if (currentQuestionIndex == 0) {
+                      Navigator.pop(context);
+                    } else {
+                      setState(() {
+                        currentQuestionIndex--;
+                        if (answers.isNotEmpty) {
+                          answers.removeLast();
+                        }
+                        selectedAnswer = null;
+                      });
+                    }
+                  },
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              color: Colors.black,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            'ย้อนกลับ',
+            style: TextStyle(
+              color: kText,
+              fontSize: 16,
+              fontFamily: kFont,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomBar() {
+    return Container(
+      height: 95,
+      decoration: const BoxDecoration(
+        color: kBottomBar,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(38)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: const [
+          Icon(Icons.home, size: 40, color: kPrimary),
+          Icon(Icons.notifications, size: 40, color: kPrimary),
+          Icon(Icons.account_circle, size: 44, color: kWhite),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final current = questions[currentQuestionIndex];
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFDF0E8),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextButton.icon(
-                onPressed: () {
-                  if (currentQuestionIndex == 0) {
-                    Navigator.pop(context);
-                  } else {
-                    setState(() {
-                      currentQuestionIndex--;
-
-                      if (answers.isNotEmpty) {
-                        answers.removeLast();
-                      }
-
-                      selectedAnswer = null;
-                    });
-                  }
-                },
-                icon: const Icon(
-                  Icons.arrow_back_ios_new,
-                  color: Color(0xFF564444),
-                ),
-                label: const Text(
-                  'ย้อนกลับ',
-                  style: TextStyle(color: Color(0xFF564444)),
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'แบบสอบถาม',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Color(0xFF564444),
-                ),
-              ),
-              const SizedBox(height: 14),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 16,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFCFAFF),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(
-                  current['question']!,
-                  style: const TextStyle(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: kTopBar,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: kBackground,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildTopBar(),
+                const SizedBox(height: 44),
+                const Text(
+                  'แบบสอบถาม',
+                  style: TextStyle(
                     fontSize: 16,
-                    color: Color(0xFF564444),
-                    height: 1.3,
+                    color: kText,
+                    fontFamily: kFont,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-              ),
-              const SizedBox(height: 18),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  buildAnswerBox(
-                    label: 'A',
-                    text: current['a']!,
-                    isSelected: selectedAnswer == 'A',
-                    onTap: () {
-                      setState(() {
-                        selectedAnswer = 'A';
-                      });
-                    },
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
                   ),
-                  buildAnswerBox(
-                    label: 'B',
-                    text: current['b']!,
-                    isSelected: selectedAnswer == 'B',
-                    onTap: () {
-                      setState(() {
-                        selectedAnswer = 'B';
-                      });
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton(
-                  onPressed: selectedAnswer == null ? null : nextQuestion,
-                  style: ElevatedButton.styleFrom(
-                    elevation: 0,
-                    backgroundColor: const Color(0xFFEE711E),
-                    disabledBackgroundColor: const Color(0xFFFCFAFF),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
+                  decoration: BoxDecoration(
+                    color: kFieldFill,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: kPrimary, width: 1.2),
                   ),
                   child: Text(
-                    currentQuestionIndex == questions.length - 1
-                        ? 'เสร็จสิ้น'
-                        : 'ถัดไป',
-                    style: const TextStyle(color: Color(0xFF564444)),
+                    current['question'] ?? '',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: kText,
+                      height: 1.28,
+                      fontFamily: kFont,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 30),
-            ],
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    buildAnswerBox(
+                      label: 'A',
+                      text: current['a'] ?? '',
+                      isSelected: selectedAnswer == 'A',
+                      onTap: () {
+                        setState(() {
+                          selectedAnswer = 'A';
+                        });
+                      },
+                    ),
+                    buildAnswerBox(
+                      label: 'B',
+                      text: current['b'] ?? '',
+                      isSelected: selectedAnswer == 'B',
+                      onTap: () {
+                        setState(() {
+                          selectedAnswer = 'B';
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: SizedBox(
+                    width: 78,
+                    height: 36,
+                    child: ElevatedButton(
+                      onPressed: selectedAnswer == null || isSubmitting
+                          ? null
+                          : nextQuestion,
+                      style: ElevatedButton.styleFrom(
+                        elevation: 0,
+                        backgroundColor: kPrimary,
+                        disabledBackgroundColor: kFieldFill,
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Text(
+                        isSubmitting
+                            ? 'รอ...'
+                            : currentQuestionIndex == questions.length - 1
+                                ? 'เสร็จสิ้น'
+                                : 'ถัดไป',
+                        style: TextStyle(
+                          color: selectedAnswer == null && !isSubmitting
+                              ? kText
+                              : kWhite,
+                          fontSize: 14,
+                          fontFamily: kFont,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 30),
+              ],
+            ),
           ),
         ),
-      ),
-      bottomNavigationBar: Container(
-        height: 80,
-        decoration: const BoxDecoration(
-          color: Color(0xFFFCFAFF),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            Icon(Icons.home, size: 36, color: Color(0xFFEE711E)),
-            Icon(Icons.notifications, size: 34, color: Color(0xFFEE711E)),
-            Icon(Icons.account_circle, size: 36, color: Color(0xFFEE711E)),
-          ],
-        ),
+        bottomNavigationBar: _buildBottomBar(),
       ),
     );
   }

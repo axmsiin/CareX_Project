@@ -1,56 +1,148 @@
 import 'package:carex/Caregiver/notification/notification.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/caregiverData.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/profileCaregiver.dart';
+import 'package:carex/services/backend_data_service.dart';
 
-class Home extends StatelessWidget {
+class Home extends StatefulWidget {
   final caregiverData profile;
 
   const Home({super.key, required this.profile});
 
-  static const bool testHasMatch = false;
-
   static ElderlyMatchData? confirmedElderly;
-  static bool pendingNotificationActive = true;
+
+  @override
+  State<Home> createState() => _HomeState();
+}
+
+class _HomeState extends State<Home> {
+  static const Color kPrimary = Color(0xFFEE711E);
+  static const Color kWhite = Color(0xFFFFFFFF);
+  static const Color kText = Color(0xFF564444);
+  static const Color kTopBar = Color(0xFFFFC59E);
+  static const Color kBackground = Color(0xFFFDF0E8);
+  static const Color kCard = Color(0xFFF5F3F6);
+  static const Color kBottomBar = Color(0xFFFFC59E);
+  static const String kFont = 'Sarabun';
+
+  ElderlyMatchData? _matchedElderly;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _matchedElderly = Home.confirmedElderly;
+    _loadMatchedElderlyFromDatabase();
+  }
+
+  Future<void> _loadMatchedElderlyFromDatabase() async {
+    final current = Home.confirmedElderly;
+
+    if (current == null) {
+      if (!mounted) return;
+      setState(() {
+        _matchedElderly = null;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    final elderlyId = current.elderlyId?.trim() ?? '';
+
+    if (elderlyId.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _matchedElderly = current;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final elderlyDetail =
+          await BackendDataService.fetchElderlyDetail(elderlyId);
+
+      if (!mounted) return;
+
+      if (elderlyDetail != null) {
+        final alias = elderlyDetail.nickName.trim().isNotEmpty
+            ? elderlyDetail.nickName.trim()
+            : elderlyDetail.fullName.trim();
+
+        final updated = ElderlyMatchData(
+          elderlyId: elderlyId,
+          fullName: alias,
+          age: current.age,
+          gender: elderlyDetail.gender.isEmpty
+              ? current.gender
+              : elderlyDetail.gender,
+          province: elderlyDetail.zipcode.isNotEmpty
+              ? elderlyDetail.zipcode
+              : current.province,
+          detail: current.detail,
+          disease: elderlyDetail.underlyingDiseases.isEmpty
+              ? current.disease
+              : elderlyDetail.underlyingDiseases.join(', '),
+          schedule: current.schedule,
+          phone:
+              elderlyDetail.phone.isEmpty ? current.phone : elderlyDetail.phone,
+          birthDateText: elderlyDetail.birthDate.isEmpty
+              ? current.birthDateText
+              : elderlyDetail.birthDate,
+          weightText: elderlyDetail.weight.isEmpty
+              ? current.weightText
+              : '${elderlyDetail.weight} กก.',
+          chronicDiseaseText: elderlyDetail.underlyingDiseases.isEmpty
+              ? current.chronicDiseaseText
+              : elderlyDetail.underlyingDiseases.join(', '),
+          address: elderlyDetail.address.isEmpty
+              ? current.address
+              : elderlyDetail.address,
+          serviceDateText: elderlyDetail.serviceDatesText.isEmpty
+              ? current.serviceDateText
+              : elderlyDetail.serviceDatesText,
+          serviceTimeText: (elderlyDetail.startTime.isNotEmpty &&
+                  elderlyDetail.endTime.isNotEmpty)
+              ? 'เวลา : ${elderlyDetail.startTime} - ${elderlyDetail.endTime} น.'
+              : current.serviceTimeText,
+          wageText: elderlyDetail.salaryText.isEmpty
+              ? current.wageText
+              : elderlyDetail.salaryText,
+          careNeeds: elderlyDetail.selectedNeeds.isEmpty
+              ? current.careNeeds
+              : elderlyDetail.selectedNeeds,
+        );
+
+        Home.confirmedElderly = updated;
+        setState(() {
+          _matchedElderly = updated;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      setState(() {
+        _matchedElderly = current;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _matchedElderly = current;
+        _isLoading = false;
+      });
+    }
+  }
 
   void _goToNotification(BuildContext context) {
-    final bool shouldShowPending =
-        testHasMatch && pendingNotificationActive && confirmedElderly == null;
-
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (context) => notification(
-          profile: profile,
-          startWithMatch: shouldShowPending,
-          mockMatch: shouldShowPending
-              ? const ElderlyMatchData(
-                  fullName: 'สมหมาย',
-                  age: 79,
-                  gender: 'เพศ',
-                  province: 'กรุงเทพมหานคร',
-                  detail: 'ช่วยดูแลกิจวัตรประจำวัน / เตือนกินยา',
-                  disease: 'เบาหวาน, ความดันโลหิตสูง',
-                  schedule: 'จ.-ศ. 08.00 - 17.00 น.',
-                  phone: '0965738701',
-                  birthDateText: '19 กรกฎาคม 1995',
-                  weightText: '69 กก.',
-                  chronicDiseaseText: 'โรคประจำตัว',
-                  address:
-                      '95/675 หมู่บ้านชาย ถนนสุขสวัสดิ์ แขวงบางชื่อ เขตบางชื่อ กรุงเทพมหานคร',
-                  serviceDateText: 'วันที่ : 5-9 มีนาคม 2026',
-                  serviceTimeText: 'เวลา : 09.00 - 18.00 น.',
-                  wageText: 'วันละ : 1,500 บาท',
-                  careNeeds: [
-                    'กิจวัตรประจำวัน',
-                    'เตือนการกินยา',
-                    'การทำแผล\nแผลสด / แผลกดทับ',
-                    'การเฝ้าสังเกตอาการข้างเคียง\nเหลว / ปั๊ม',
-                    'การนวดแผนไทย / กายภาพเบื้องต้น',
-                    'กำหนดการกินอาหาร\nอาหารอ่อน / อาหารเฉพาะโรค',
-                  ],
-                )
-              : null,
+          profile: widget.profile,
+          startWithMatch: false,
+          mockMatch: null,
         ),
       ),
     );
@@ -60,153 +152,109 @@ class Home extends StatelessWidget {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => profileCaregiver(profile: profile),
+        builder: (context) => profileCaregiver(profile: widget.profile),
       ),
     );
   }
 
-  Widget _buildMatchedCard(BuildContext context, ElderlyMatchData data) {
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ElderlyDetailPage(data: data),
-          ),
-        );
-      },
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFCFAFF),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                data.fullName,
-                style: const TextStyle(
-                  fontSize: 18,
-                  color: Color(0xFF564444),
-                ),
-              ),
-            ),
-            const Icon(
-              Icons.chevron_right,
-              size: 30,
-              color: Color(0xFF564444),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget _buildMatchedCard(ElderlyMatchData data) {
+    final String displayName =
+        data.fullName.trim().isEmpty ? 'ไม่มีข้อมูล' : data.fullName.trim();
 
-  @override
-  Widget build(BuildContext context) {
-    final ElderlyMatchData? data = confirmedElderly;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFFDF0E8),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 25),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 35),
-              const Text(
-                "ข้อมูลผู้สูงอายุที่ดูแล",
-                style: TextStyle(fontSize: 20, color: Color(0xFF564444)),
-              ),
-              const SizedBox(height: 40),
-              if (data == null) ...[
-                const SizedBox(height: 30),
-                const Center(
-                  child: Icon(
-                    Icons.account_circle_outlined,
-                    size: 220,
-                    color: Color(0xFFFCFAFF),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                const Center(
-                  child: Text(
-                    "ไม่มีข้อมูล",
-                    style: TextStyle(fontSize: 20, color: Color(0xFF564444)),
-                  ),
-                ),
-              ] else ...[
-                _buildMatchedCard(context, data),
-              ],
-            ],
-          ),
-        ),
-      ),
-      bottomNavigationBar: Container(
-        height: 85,
-        decoration: const BoxDecoration(
-          color: Color(0xFFFCFAFF),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.home, size: 34, color: Color(0xFFEE711E)),
-            ),
-            IconButton(
-              onPressed: () => _goToNotification(context),
-              icon: const Icon(
-                Icons.notifications,
-                size: 38,
-                color: Color(0xFFEE711E),
-              ),
-            ),
-            IconButton(
-              onPressed: () => _goToProfile(context),
-              icon: const Icon(
-                Icons.account_circle,
-                size: 42,
-                color: Color(0xFFEE711E),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class ElderlyDetailPage extends StatelessWidget {
-  final ElderlyMatchData data;
-
-  const ElderlyDetailPage({super.key, required this.data});
-
-  Widget _buildBox(String text, {Widget? trailing}) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      height: 140,
+      padding: const EdgeInsets.symmetric(horizontal: 26),
       decoration: BoxDecoration(
-        color: const Color(0xFFFCFAFF),
-        borderRadius: BorderRadius.circular(12),
+        color: kCard,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: kPrimary, width: 1.2),
       ),
       child: Row(
         children: [
           Expanded(
             child: Text(
-              text,
+              displayName,
               style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF564444),
+                fontSize: 16,
+                color: kText,
+                fontFamily: kFont,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
-          if (trailing != null) trailing,
+          const SizedBox(width: 12),
+          const Icon(
+            Icons.arrow_forward_ios,
+            size: 34,
+            color: Colors.black87,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return const Column(
+      children: [
+        SizedBox(height: 70),
+        Center(
+          child: Icon(
+            Icons.account_circle_outlined,
+            size: 250,
+            color: kPrimary,
+          ),
+        ),
+        SizedBox(height: 20),
+        Center(
+          child: Text(
+            'ไม่มีข้อมูล',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.black,
+              fontFamily: kFont,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBottomBar(BuildContext context) {
+    return Container(
+      height: 95,
+      decoration: const BoxDecoration(
+        color: kBottomBar,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(38)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(
+              Icons.home,
+              size: 42,
+              color: kWhite,
+            ),
+          ),
+          IconButton(
+            onPressed: () => _goToNotification(context),
+            icon: const Icon(
+              Icons.notifications,
+              size: 42,
+              color: kPrimary,
+            ),
+          ),
+          IconButton(
+            onPressed: () => _goToProfile(context),
+            icon: const Icon(
+              Icons.account_circle,
+              size: 46,
+              color: kPrimary,
+            ),
+          ),
         ],
       ),
     );
@@ -214,151 +262,53 @@ class ElderlyDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFDF0E8),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              InkWell(
-                onTap: () => Navigator.pop(context),
-                child: const Row(
+    final ElderlyMatchData? data = _matchedElderly;
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: kTopBar,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: kBackground,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 20),
+                Row(
                   children: [
-                    Icon(
-                      Icons.arrow_back_ios_new,
-                      size: 18,
-                      color: Color(0xFF564444),
-                    ),
-                    SizedBox(width: 8),
-                    Text(
+                    const SizedBox(width: 4),
+                    const Text(
                       'ข้อมูลผู้สูงอายุที่ดูแล',
                       style: TextStyle(
-                        fontSize: 18,
-                        color: Color(0xFF564444),
+                        fontSize: 16,
+                        color: kText,
+                        fontFamily: kFont,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 18),
-              const Center(
-                child: Icon(
-                  Icons.account_circle_outlined,
-                  size: 90,
-                  color: Color(0xFFFCFAFF),
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'ข้อมูลสุขภาพพื้นฐาน',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF564444),
-                ),
-              ),
-              const SizedBox(height: 12),
-              _buildBox(data.fullName),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(child: _buildBox(data.phone)),
-                  const SizedBox(width: 10),
-                  Expanded(child: _buildBox(data.birthDateText)),
+                const SizedBox(height: 28),
+                if (_isLoading) ...[
+                  const SizedBox(height: 120),
+                  const Center(
+                    child: CircularProgressIndicator(color: kPrimary),
+                  ),
+                ] else if (data == null) ...[
+                  _buildEmptyState(),
+                ] else ...[
+                  _buildMatchedCard(data),
                 ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildBox(
-                      data.gender,
-                      trailing: const Icon(
-                        Icons.keyboard_arrow_down,
-                        color: Color(0xFF564444),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _buildBox('น้ำหนัก : ${data.weightText}'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              _buildBox(
-                data.chronicDiseaseText,
-                trailing: const Icon(
-                  Icons.keyboard_arrow_down,
-                  color: Color(0xFF564444),
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'ที่อยู่',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF564444),
-                ),
-              ),
-              const SizedBox(height: 10),
-              _buildBox(data.address),
-              const SizedBox(height: 6),
-              Container(
-                width: double.infinity,
-                height: 98,
-                alignment: Alignment.center,
-                color: const Color(0xFFEBEBEB),
-                child: const Text(
-                  'แผนที่',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF564444),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'วันและเวลาที่จะรับบริการ',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF564444),
-                ),
-              ),
-              const SizedBox(height: 10),
-              _buildBox(data.serviceDateText),
-              const SizedBox(height: 10),
-              _buildBox(data.serviceTimeText),
-              const SizedBox(height: 18),
-              const Text(
-                'ราคาค่าจ้าง',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF564444),
-                ),
-              ),
-              const SizedBox(height: 10),
-              _buildBox(data.wageText),
-              const SizedBox(height: 18),
-              const Text(
-                'ความต้องการในการดูแล',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF564444),
-                ),
-              ),
-              const SizedBox(height: 10),
-              ...data.careNeeds.map(
-                (item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _buildBox(item),
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
+              ],
+            ),
           ),
         ),
+        bottomNavigationBar: _buildBottomBar(context),
       ),
     );
   }

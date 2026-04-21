@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:carex/User/HomePages/home.dart';
 import 'package:carex/User/HomePages/elderlyData.dart';
 import 'package:carex/User/HomePages/elderlyStore.dart';
@@ -14,7 +15,18 @@ class question extends StatefulWidget {
 }
 
 class _questionState extends State<question> {
-  final List<Map<String, String>> questions = [
+  static const Color kPrimary = Color(0xFFEE711E);
+  static const Color kGreen = Color(0xFF35CC2D);
+  static const Color kWhite = Color(0xFFFFFFFF);
+  static const Color kText = Color(0xFF564444);
+  static const Color kPopupText = Color(0xFFE95257);
+  static const Color kTopBar = Color(0xFFFFC59E);
+  static const Color kBackground = Color(0xFFFDF0E8);
+  static const Color kFieldFill = Color(0xFFF5F3F6);
+  static const Color kBottomBar = Color(0xFFFFC59E);
+  static const String kFont = 'Sarabun';
+
+  List<Map<String, String>> questions = [
     {
       'question':
           'เมื่อผู้สูงอายุรู้สึกไม่พอใจหรืออารมณ์ไม่ดี ผู้สูงอายุมักจะ...',
@@ -56,6 +68,22 @@ class _questionState extends State<question> {
   int currentQuestionIndex = 0;
   String? selectedAnswer;
   final List<String> answers = [];
+  bool isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadQuestions();
+  }
+
+  Future<void> _loadQuestions() async {
+    final apiQuestions =
+        await BackendDataService.fetchQuestions('question_elderly');
+    if (apiQuestions.isEmpty || !mounted) return;
+    setState(() {
+      questions = apiQuestions;
+    });
+  }
 
   int _calculateScore(List<String> selectedAnswers) {
     final aCount = selectedAnswers.where((e) => e == 'A').length;
@@ -68,41 +96,74 @@ class _questionState extends State<question> {
   Future<void> finishAndGoHome() async {
     Navigator.of(context, rootNavigator: true).pop();
 
-    final score = _calculateScore(answers);
-    widget.elderlyData.score = score;
-    widget.elderlyData.status = 'matching';
-    widget.elderlyData.caregiver = '';
-    widget.elderlyData.matchPercent = '';
+    if (isSubmitting) return;
 
-    final created = await BackendDataService.createElderlyProfile(widget.elderlyData);
-    if (created != null) {
+    setState(() {
+      isSubmitting = true;
+    });
+
+    try {
+      final score = _calculateScore(answers);
+      widget.elderlyData.score = score;
+      widget.elderlyData.status = 'matching';
+      widget.elderlyData.caregiver = '';
+      widget.elderlyData.matchPercent = '';
+
+      final created =
+          await BackendDataService.createElderlyProfile(widget.elderlyData);
+
+      if (created == null ||
+          created.elderlyId == null ||
+          created.elderlyId!.isEmpty) {
+        throw Exception('สร้างข้อมูลผู้สูงอายุไม่สำเร็จ');
+      }
+
       created.score = score;
       created.status = created.status.isEmpty ? 'matching' : created.status;
+
       widget.elderlyData.elderlyId = created.elderlyId;
       widget.elderlyData.status = created.status;
+
+      await BackendDataService.submitQuestionScore(
+        target: 'elderly',
+        score: score,
+        relatedId: created.elderlyId,
+        answers: answers,
+      );
+
+      // requestMatch คืน true ถ้ามี caregiver ที่ match >= 75% อย่างน้อย 1 คน
+      // status 'matching' = กำลังรอผู้ดูแลยืนยัน (มีผลลัพธ์แล้ว)
+      // status 'no_match'  = ยังไม่มี caregiver ที่ตรงเงื่อนไข
+      final hasMatch = await BackendDataService.requestMatch(
+        elderlyId: created.elderlyId!,
+      );
+      created.status = hasMatch ? 'matching' : 'no_match';
+
       await ElderlyStore.upsert(created);
-    } else {
-      await ElderlyStore.upsert(widget.elderlyData);
+
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const home()),
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'บันทึกข้อมูลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง',
+            style: TextStyle(fontFamily: kFont),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          isSubmitting = false;
+        });
+      }
     }
-
-    await BackendDataService.submitQuestionScore(
-      target: 'elderly',
-      score: score,
-      relatedId: created?.elderlyId ?? widget.elderlyData.elderlyId,
-      answers: answers,
-    );
-    await BackendDataService.requestMatch(
-      created ?? widget.elderlyData,
-      elderlyId: created?.elderlyId ?? widget.elderlyData.elderlyId,
-      questionScore: score,
-    );
-
-    if (!mounted) return;
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const home()),
-      (route) => false,
-    );
   }
 
   void showFinishDialog() {
@@ -113,12 +174,12 @@ class _questionState extends State<question> {
         return Dialog(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 38),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 48),
           child: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFFCFAFF),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFEE711E), width: 1.4),
+              color: kFieldFill,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: kPrimary, width: 1.2),
             ),
             child: Stack(
               children: [
@@ -127,38 +188,41 @@ class _questionState extends State<question> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       const Text(
-                        '*หากกดยืนยันแล้วระบบจะมีการ Matching ข้อมูลของผู้สูงอายุและผู้ดูแล',
+                        '*หากกดยืนยันแล้ว\nระบบจะทำการ Matching\nข้อมูลของผู้ดูแลให้แก่ผู้สูงอายุ',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Color(0xFFE95257),
-                          fontSize: 15,
-                          height: 1.35,
+                          color: kPopupText,
+                          fontSize: 14,
+                          height: 1.28,
                           fontWeight: FontWeight.w500,
+                          fontFamily: kFont,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
                       Align(
                         alignment: Alignment.centerRight,
                         child: SizedBox(
-                          width: 82,
-                          height: 34,
+                          width: 86,
+                          height: 32,
                           child: ElevatedButton(
-                            onPressed: finishAndGoHome,
+                            onPressed: isSubmitting ? null : finishAndGoHome,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF39C327),
+                              backgroundColor: kGreen,
                               elevation: 0,
                               padding: EdgeInsets.zero,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(18),
                               ),
                             ),
-                            child: const Text(
-                              'ตกลง',
-                              style: TextStyle(
-                                color: Color(0xFFFFFFFF),
+                            child: Text(
+                              isSubmitting ? 'รอ...' : 'ตกลง',
+                              style: const TextStyle(
+                                color: kWhite,
                                 fontSize: 14,
+                                fontFamily: kFont,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ),
@@ -168,16 +232,22 @@ class _questionState extends State<question> {
                   ),
                 ),
                 Positioned(
-                  top: 6,
-                  right: 6,
+                  top: 8,
+                  right: 8,
                   child: InkWell(
                     borderRadius: BorderRadius.circular(20),
-                    onTap: () {
-                      Navigator.pop(dialogContext);
-                    },
+                    onTap: isSubmitting
+                        ? null
+                        : () {
+                            Navigator.pop(dialogContext);
+                          },
                     child: const Padding(
-                      padding: EdgeInsets.all(4),
-                      child: Icon(Icons.close, size: 20, color: Colors.black87),
+                      padding: EdgeInsets.all(2),
+                      child: Icon(
+                        Icons.close,
+                        size: 22,
+                        color: Colors.black,
+                      ),
                     ),
                   ),
                 ),
@@ -190,7 +260,7 @@ class _questionState extends State<question> {
   }
 
   void nextQuestion() {
-    if (selectedAnswer == null) return;
+    if (selectedAnswer == null || isSubmitting) return;
 
     answers.add(selectedAnswer!);
 
@@ -211,25 +281,31 @@ class _questionState extends State<question> {
     required VoidCallback onTap,
   }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: isSubmitting ? null : onTap,
       child: Container(
-        width: 135,
-        height: 155,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        width: 160,
+        height: 168,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFEE711E) : const Color(0xFFFCFAFF),
+          color: isSelected ? kPrimary : kFieldFill,
           borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: kPrimary,
+            width: 1.2,
+          ),
         ),
         child: Column(
           children: [
             Text(
               label,
               style: TextStyle(
-                fontSize: 22,
-                color: isSelected ? Colors.white : const Color(0xFF7B6B6B),
+                fontSize: 16,
+                color: isSelected ? kWhite : kText,
+                fontFamily: kFont,
+                fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 10),
             Expanded(
               child: Center(
                 child: Text(
@@ -238,7 +314,8 @@ class _questionState extends State<question> {
                   style: TextStyle(
                     fontSize: 14,
                     height: 1.25,
-                    color: isSelected ? Colors.white : const Color(0xFF564444),
+                    color: isSelected ? kWhite : kText,
+                    fontFamily: kFont,
                   ),
                 ),
               ),
@@ -249,141 +326,213 @@ class _questionState extends State<question> {
     );
   }
 
+  Widget _buildTopBar() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: isSubmitting
+                ? null
+                : () {
+                    if (currentQuestionIndex == 0) {
+                      Navigator.pop(context);
+                    } else {
+                      setState(() {
+                        currentQuestionIndex--;
+                        if (answers.isNotEmpty) {
+                          answers.removeLast();
+                        }
+                        selectedAnswer = null;
+                      });
+                    }
+                  },
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              size: 20,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(width: 10),
+          const Text(
+            'ข้อมูลผู้สูงอายุ',
+            style: TextStyle(
+              color: kText,
+              fontSize: 16,
+              fontFamily: kFont,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuestionTitle() {
+    return const Text(
+      'แบบสอบถาม',
+      style: TextStyle(
+        fontSize: 16,
+        color: kText,
+        fontFamily: kFont,
+        fontWeight: FontWeight.w500,
+      ),
+    );
+  }
+
+  Widget _buildQuestionBox(Map<String, String> current) {
+    String questionText = current['question'] ?? '';
+    if (currentQuestionIndex == questions.length - 1) {
+      questionText =
+          'จากพฤติกรรมที่เห็นเป็นประจำ ข้อใด\nตรงกับผู้สูงอายุของคุณมากที่สุด ระหว่าง A กับ B';
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: kFieldFill,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: kPrimary,
+          width: 1.2,
+        ),
+      ),
+      child: Text(
+        questionText,
+        style: const TextStyle(
+          fontSize: 14,
+          color: kText,
+          height: 1.28,
+          fontFamily: kFont,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConfirmButton() {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: SizedBox(
+        width: 78,
+        height: 36,
+        child: ElevatedButton(
+          onPressed:
+              selectedAnswer == null || isSubmitting ? null : nextQuestion,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: kPrimary,
+            disabledBackgroundColor: kFieldFill,
+            elevation: 0,
+            padding: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+          child: Text(
+            isSubmitting
+                ? 'รอ...'
+                : currentQuestionIndex == questions.length - 1
+                    ? 'ยืนยัน'
+                    : 'ถัดไป',
+            style: TextStyle(
+              color: selectedAnswer == null || isSubmitting ? kText : kWhite,
+              fontSize: 14,
+              fontFamily: kFont,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomBar() {
+    return Container(
+      height: 95,
+      decoration: const BoxDecoration(
+        color: kBottomBar,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(38)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: const [
+          Icon(Icons.home, size: 42, color: kWhite),
+          Icon(Icons.notifications, size: 40, color: kPrimary),
+          Icon(Icons.account_circle, size: 46, color: kPrimary),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final current = questions[currentQuestionIndex];
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFDF0E8),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextButton.icon(
-                onPressed: () {
-                  if (currentQuestionIndex == 0) {
-                    Navigator.pop(context);
-                  } else {
-                    setState(() {
-                      currentQuestionIndex--;
-                      if (answers.isNotEmpty) {
-                        answers.removeLast();
-                      }
-                      selectedAnswer = null;
-                    });
-                  }
-                },
-                icon: const Icon(
-                  Icons.arrow_back_ios_new,
-                  color: Color(0xFF564444),
-                  size: 18,
-                ),
-                label: const Text(
-                  'ข้อมูลผู้สูงอายุ',
-                  style: TextStyle(color: Color(0xFF564444), fontSize: 15),
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'แบบสอบถาม',
-                style: TextStyle(fontSize: 17, color: Color(0xFF564444)),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFCFAFF),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(
-                  current['question']!,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    color: Color(0xFF564444),
-                    height: 1.3,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  buildAnswerBox(
-                    label: 'A',
-                    text: current['a']!,
-                    isSelected: selectedAnswer == 'A',
-                    onTap: () {
-                      setState(() {
-                        selectedAnswer = 'A';
-                      });
-                    },
-                  ),
-                  buildAnswerBox(
-                    label: 'B',
-                    text: current['b']!,
-                    isSelected: selectedAnswer == 'B',
-                    onTap: () {
-                      setState(() {
-                        selectedAnswer = 'B';
-                      });
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Align(
-                alignment: Alignment.centerRight,
-                child: SizedBox(
-                  width: 84,
-                  height: 38,
-                  child: ElevatedButton(
-                    onPressed: selectedAnswer == null ? null : nextQuestion,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFEE711E),
-                      disabledBackgroundColor: const Color(0xFFFCFAFF),
-                      elevation: 0,
-                      padding: EdgeInsets.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
+    String answerAText = current['a'] ?? '';
+    String answerBText = current['b'] ?? '';
+
+    if (currentQuestionIndex == questions.length - 1) {
+      answerAText =
+          'เมื่อรู้สึกไม่พอใจ\nมักจะแสดงออกทาง\nคำพูดหรือท่าทางให้\nรู้ทันที';
+      answerBText =
+          'เมื่อรู้สึกไม่พอใจ\nมักจะนั่งเงียบ\nไม่พูดว่า\nหรือเลี่ยงไปอยู่คน\nเดียว';
+    }
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: kTopBar,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: kBackground,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildTopBar(),
+                const SizedBox(height: 44),
+                _buildQuestionTitle(),
+                const SizedBox(height: 12),
+                _buildQuestionBox(current),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    buildAnswerBox(
+                      label: 'A',
+                      text: answerAText,
+                      isSelected: selectedAnswer == 'A',
+                      onTap: () {
+                        setState(() {
+                          selectedAnswer = 'A';
+                        });
+                      },
                     ),
-                    child: Text(
-                      currentQuestionIndex == questions.length - 1
-                          ? 'ยืนยัน'
-                          : 'ถัดไป',
-                      style: const TextStyle(
-                        color: Color(0xFF564444),
-                        fontSize: 14,
-                      ),
+                    buildAnswerBox(
+                      label: 'B',
+                      text: answerBText,
+                      isSelected: selectedAnswer == 'B',
+                      onTap: () {
+                        setState(() {
+                          selectedAnswer = 'B';
+                        });
+                      },
                     ),
-                  ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 30),
-            ],
+                const SizedBox(height: 18),
+                _buildConfirmButton(),
+                const SizedBox(height: 30),
+              ],
+            ),
           ),
         ),
-      ),
-      bottomNavigationBar: Container(
-        height: 85,
-        decoration: const BoxDecoration(
-          color: Color(0xFFFCFAFF),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: const [
-            Icon(Icons.home, size: 38, color: Color(0xFFEE711E)),
-            Icon(Icons.notifications, size: 38, color: Color(0xFF0D47A1)),
-            Icon(Icons.account_circle, size: 42, color: Color(0xFF0D47A1)),
-          ],
-        ),
+        bottomNavigationBar: _buildBottomBar(),
       ),
     );
   }

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:carex/User/HomePages/elderlyStore.dart';
 import 'package:carex/User/HomePages/home.dart';
 import 'package:carex/User/Profile/profileUser.dart';
-import 'package:carex/User/Profile/profileUser.dart';
+import 'package:carex/services/app_session.dart';
+import 'package:carex/services/backend_data_service.dart';
 
 class notification extends StatefulWidget {
   const notification({super.key});
@@ -12,13 +14,85 @@ class notification extends StatefulWidget {
 }
 
 class _NotificationState extends State<notification> {
-  final List<Map<String, dynamic>> mockCaregivers = const [];
+  static const Color kPrimary = Color(0xFFEE711E);
+  static const Color kWhite = Color(0xFFFFFFFF);
+  static const Color kText = Color(0xFF564444);
+  static const Color kTopBar = Color(0xFFFFC59E);
+  static const Color kBackground = Color(0xFFFDF0E8);
+  static const Color kFieldFill = Color(0xFFF5F3F6);
+  static const Color kBottomBar = Color(0xFFFFC59E);
+  static const Color kGreen = Color(0xFF35CC2D);
+  static const Color kRed = Color(0xFFE95257);
+  static const String kFont = 'Sarabun';
+
+  // เก็บรายการผู้ดูแลแยกตาม ID ของผู้สูงอายุ
+  Map<String, List<Map<String, dynamic>>> matchesPerElderly = {};
+  bool isLoadingMatches = false;
+  final List<String> rejectedCaregiverIds = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMatches();
+  }
+
+  Future<void> _loadMatches({bool shouldSync = true}) async {
+    if (!mounted) return;
+    setState(() {
+      isLoadingMatches = true;
+      matchesPerElderly.clear();
+    });
+
+    if (shouldSync) {
+      print('DEBUG: [Notification] Syncing from backend...');
+      await ElderlyStore.syncFromBackend();
+    } else {
+      print('DEBUG: [Notification] Skipping sync to preserve local status.');
+    }
+    
+    final pIndexes = pendingIndexes;
+    print('DEBUG: [Notification] Found ${pIndexes.length} pending elderly profiles.');
+
+    for (int idx in pIndexes) {
+      final elderly = ElderlyStore.elderlyList[idx];
+      final String? eId = elderly.elderlyId;
+      
+      if (eId == null || eId.isEmpty) continue;
+
+      // ถ้าคนนี้กดยืนยันไปแล้วในเซสชันนี้ ให้ข้ามการโหลด matches
+      if (ElderlyStore.isConfirmed(eId)) continue;
+
+      print('DEBUG: [Notification] Loading matches for: ${elderly.nickName} ($eId)');
+      final matches = await BackendDataService.fetchMatchSuggestions(eId);
+      print('DEBUG: [Notification] Matches for ${elderly.nickName}: ${matches.length}');
+
+      matchesPerElderly[eId] = matches;
+
+      // อัปเดต status เป็น matching ถ้ามีผลลัพธ์
+      if (matches.isNotEmpty && (elderly.status.isEmpty || elderly.status.trim().toLowerCase() == 'no_match')) {
+        elderly.status = 'matching';
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      isLoadingMatches = false;
+    });
+  }
 
   List<int> get pendingIndexes {
     final indexes = <int>[];
     for (int i = 0; i < ElderlyStore.elderlyList.length; i++) {
       final item = ElderlyStore.elderlyList[i];
-      if (item.status == 'matching' || item.status == 'รอการจับคู่') {
+      final s = item.status.trim().toLowerCase();
+      final String eId = item.elderlyId ?? '';
+
+      // ถ้าเลือกผู้ดูแลไปแล้ว (จดจำในเครื่อง หรือ Backend ยืนยัน) ไม่ต้องแสดงในส่วน Matching
+      if (ElderlyStore.isConfirmed(eId)) continue;
+
+      // เฉพาะสถานะที่ยังไม่ได้เลือกผู้ดูแลเท่านั้นที่แสดงในส่วน Matching
+      // เอา 'pending' และ 'waiting_confirm' ออก เพื่อไม่ให้แสดงซ้ำเมื่อเลือกไปแล้ว
+      if (s == 'matching' || s == 'รอการจับคู่' || s == 'no_match' || s == '') {
         indexes.add(i);
       }
     }
@@ -29,10 +103,20 @@ class _NotificationState extends State<notification> {
     final indexes = <int>[];
     for (int i = 0; i < ElderlyStore.elderlyList.length; i++) {
       final item = ElderlyStore.elderlyList[i];
-      if (item.status == 'matched' ||
-          item.status == 'match_failed' ||
-          item.status == 'caregiver_rejected') {
-        indexes.add(i);
+      final s = item.status.trim().toLowerCase();
+      final String eId = item.elderlyId ?? '';
+
+      // ถ้าเลือกไปแล้วในเซสชันนี้ หรือ Backend บอกว่าเป็นสถานะรอการตอบรับ
+      if (ElderlyStore.isConfirmed(eId) || 
+          s == 'waiting_confirm' || 
+          s == 'pending' || 
+          s == 'matched' || 
+          s == 'match_failed' || 
+          s == 'caregiver_rejected' || 
+          s == 'user_rejected' || 
+          s == 'confirmed' || 
+          s == 'rejected') {
+        if (!indexes.contains(i)) indexes.add(i);
       }
     }
     return indexes;
@@ -43,26 +127,21 @@ class _NotificationState extends State<notification> {
     return pendingIndexes.first;
   }
 
-  List<Map<String, dynamic>> getSortedTopMatches() {
-    final list = List<Map<String, dynamic>>.from(mockCaregivers);
-    list.sort(
-      (a, b) => (b['matchPercent'] as int).compareTo(a['matchPercent'] as int),
-    );
-    return list.take(5).toList();
-  }
-
   String showStatusText(String status) {
     switch (status) {
       case 'matching':
+      case 'รอการจับคู่':
         return 'อยู่ระหว่างการจับคู่';
       case 'waiting_confirm':
-        return 'รอการยืนยันผู้ดูแล';
+        return 'รอการตอบรับจากผู้ดูแล';
+      case 'no_match':
+        return 'ยังไม่พบผู้ดูแลที่เหมาะสม';
       case 'matched':
         return 'มีผู้ดูแลแล้ว';
       case 'match_failed':
-        return 'จับคู่ไม่สำเร็จ';
       case 'caregiver_rejected':
-        return 'ผู้ดูแลปฏิเสธ';
+      case 'user_rejected':
+        return 'จับคู่ไม่สำเร็จ';
       default:
         return status;
     }
@@ -71,101 +150,115 @@ class _NotificationState extends State<notification> {
   Color statusColor(String status) {
     switch (status) {
       case 'matched':
-        return const Color(0xFF39C327);
+        return kGreen;
       case 'match_failed':
       case 'caregiver_rejected':
-        return const Color(0xFFE53935);
+      case 'user_rejected':
+        return kRed;
       case 'waiting_confirm':
       case 'matching':
-        return const Color(0xFFE3B400);
+      case 'รอการจับคู่':
+        return const Color(0xFFE4B700);
       default:
-        return const Color(0xFF0D47A1);
+        return kText;
     }
   }
 
-  Future<void> goToProfilePage() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const profileUser()),
-    );
-    setState(() {});
+  List<Map<String, dynamic>> getFilteredMatches(String elderlyId) {
+    final rawMatches = matchesPerElderly[elderlyId] ?? [];
+    final list = rawMatches.where((c) {
+      final id = (c['caregiverId'] as String? ?? '');
+      return !rejectedCaregiverIds.contains(id);
+    }).toList();
+
+    list.sort((a, b) => (b['matchPercent'] as int).compareTo(a['matchPercent'] as int));
+    return list.take(5).toList();
   }
 
-  Future<void> confirmCandidate(int candidateIndex) async {
-    final elderlyIndex = currentPendingElderlyIndex;
-    if (elderlyIndex == null) return;
+  Future<void> confirmCandidate(String elderlyId, int candidateIndex) async {
+    final elderly = ElderlyStore.elderlyList.firstWhere((e) => e.elderlyId == elderlyId);
+    final candidate = getFilteredMatches(elderlyId)[candidateIndex];
 
-    final elderly = ElderlyStore.elderlyList[elderlyIndex];
-    final candidate = getSortedTopMatches()[candidateIndex];
+    // ใช้ raw ID โดยตรง (ห้าม trim) เพื่อให้ตรงกับข้อมูลใน DB ของ backend ที่อาจมีช่องว่าง
+    final String cId = (candidate['caregiverId'] as String? ?? '');
 
-    elderly.status = 'matched';
-    elderly.caregiver = candidate['name'] as String;
-    elderly.matchPercent = '${candidate['matchPercent']}%';
-    elderly.caregiverPhone = candidate['phone'] as String;
-    elderly.caregiverGender = candidate['gender'] as String;
-    elderly.caregiverAge = candidate['age'] as String;
-    elderly.caregiverProvince = candidate['province'] as String;
-    elderly.caregiverExperience = candidate['experience'] as String;
-    elderly.caregiverRating = candidate['rating'] as String;
-    elderly.caregiverReviewCount = candidate['reviewCount'] as String;
-    elderly.caregiverBio = candidate['bio'] as String;
+    print('DEBUG: [Confirm] Sending selection to backend -> Elderly: $elderlyId, Caregiver: "$cId"');
+
+    if (elderlyId.isEmpty || cId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ข้อมูลไม่ครบถ้วน')));
+      return;
+    }
+
+    setState(() { isLoadingMatches = true; });
+    final ok = await BackendDataService.selectCaregiver(elderlyId, cId);
+    setState(() { isLoadingMatches = false; });
+
+    if (!ok) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ไม่สามารถยืนยันได้ กรุณาลองใหม่')));
+      return;
+    }
+
+    // บันทึกสถานะการยืนยันลงใน Store กลาง
+    print('DEBUG: [Confirm] Marking $elderlyId as confirmed in Store');
+    ElderlyStore.markAsConfirmed(elderlyId);
+
+    // อัปเดตสถานะเป็นรอการยืนยันทันทีใน local state
+    setState(() {
+      elderly.status = 'waiting_confirm';
+      elderly.caregiver = candidate['name'] as String;
+      elderly.matchPercent = '${candidate['matchPercent']}%';
+      elderly.caregiverPhone = candidate['phone'] as String;
+      elderly.caregiverGender = candidate['gender'] as String;
+      elderly.caregiverAge = candidate['age'] as String;
+      elderly.caregiverProvince = candidate['province'] as String;
+      elderly.caregiverExperience = candidate['caregiverType'] as String;
+      elderly.caregiverRating = candidate['rating'] as String;
+      elderly.caregiverReviewCount = candidate['reviewCount'] as String;
+      elderly.caregiverBio = candidate['bio'] as String;
+    });
+
     await ElderlyStore.saveToCache();
-
     if (!mounted) return;
-
-    await showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.check_circle,
-                  color: Color(0xFF39C327),
-                  size: 38,
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'ยืนยันสำเร็จ',
-                  style: TextStyle(fontSize: 18, color: Color(0xFF564444)),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'ระบบได้บันทึกผู้ดูแลให้ ${elderly.nickName} แล้ว',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF564444),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF39C327),
-                  ),
-                  child: const Text(
-                    'ตกลง',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-
-    setState(() {});
+    
+    // Show Dialog and reload WITHOUT syncing from backend
+    _showSuccessDialog(elderly.nickName);
+    await _loadMatches(shouldSync: false);
   }
 
-  void rejectCurrentMatching() {
+  void _showSuccessDialog(String nickName) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(color: kFieldFill, borderRadius: BorderRadius.circular(18), border: Border.all(color: kPrimary, width: 1.2)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check_circle, color: kGreen, size: 40),
+              const SizedBox(height: 12),
+              Text('ระบบได้บันทึกผู้ดูแลให้ $nickName แล้ว', textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, color: kText, fontFamily: kFont)),
+              const SizedBox(height: 14),
+              ElevatedButton(onPressed: () => Navigator.pop(context), style: ElevatedButton.styleFrom(backgroundColor: kGreen), child: const Text('ตกลง', style: TextStyle(color: kWhite))),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> handleRejectCandidate(String caregiverId) async {
+    if (caregiverId.isNotEmpty) {
+      setState(() {
+        rejectedCaregiverIds.add(caregiverId);
+      });
+      print('DEBUG: [Reject] Caregiver ID "$caregiverId" added to session blacklist.');
+    }
+  }
+
+  Future<void> rejectCurrentMatching() async {
     final elderlyIndex = currentPendingElderlyIndex;
     if (elderlyIndex == null) return;
 
@@ -174,7 +267,12 @@ class _NotificationState extends State<notification> {
     elderly.caregiver = 'ยังไม่มีผู้ดูแล';
     elderly.matchPercent = '';
 
-    setState(() {});
+    await ElderlyStore.saveToCache();
+    await _loadMatches();
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Widget buildMiniReviewCard({
@@ -183,11 +281,11 @@ class _NotificationState extends State<notification> {
     required String reviewText,
   }) {
     return Container(
-      width: 220,
+      width: 320,
       margin: const EdgeInsets.only(right: 14),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF8DC),
+        color: const Color(0xFFF0E4DA),
         borderRadius: BorderRadius.circular(22),
       ),
       child: Column(
@@ -198,8 +296,9 @@ class _NotificationState extends State<notification> {
               Text(
                 rating,
                 style: const TextStyle(
-                  fontSize: 15,
-                  color: Color(0xFF564444),
+                  fontSize: 14,
+                  color: kText,
+                  fontFamily: kFont,
                 ),
               ),
               const SizedBox(width: 4),
@@ -210,15 +309,16 @@ class _NotificationState extends State<notification> {
                   'คะแนนการบริการ',
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 15,
-                    color: Color(0xFF564444),
+                    fontSize: 14,
+                    color: kText,
+                    fontFamily: kFont,
                   ),
                 ),
               ),
               const Icon(
                 Icons.arrow_forward_ios,
-                size: 14,
-                color: Color(0xFF564444),
+                size: 16,
+                color: kText,
               ),
             ],
           ),
@@ -226,9 +326,9 @@ class _NotificationState extends State<notification> {
           Expanded(
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF5F5F5),
+                color: kFieldFill,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Column(
@@ -236,15 +336,17 @@ class _NotificationState extends State<notification> {
                 children: [
                   Row(
                     children: [
-                      CircleAvatar(
-                        radius: 14,
-                        backgroundColor: const Color(0xFFD9C7A1),
-                        child: Text(
-                          caregiverName.isNotEmpty ? caregiverName[0] : '?',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                          ),
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: kPrimary,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Icon(
+                          Icons.shield_outlined,
+                          color: kWhite,
+                          size: 18,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -253,8 +355,9 @@ class _NotificationState extends State<notification> {
                           caregiverName,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF564444),
+                            fontSize: 14,
+                            color: kText,
+                            fontFamily: kFont,
                           ),
                         ),
                       ),
@@ -263,10 +366,11 @@ class _NotificationState extends State<notification> {
                   const SizedBox(height: 10),
                   const Row(
                     children: [
-                      Icon(Icons.star, color: Color(0xFFE3B400), size: 22),
-                      Icon(Icons.star, color: Color(0xFFE3B400), size: 22),
-                      Icon(Icons.star, color: Color(0xFFE3B400), size: 22),
-                      Icon(Icons.star, color: Color(0xFFE3B400), size: 22),
+                      Icon(Icons.star, color: Color(0xFFE3B400), size: 24),
+                      Icon(Icons.star, color: Color(0xFFE3B400), size: 24),
+                      Icon(Icons.star, color: Color(0xFFE3B400), size: 24),
+                      Icon(Icons.star, color: Color(0xFFE3B400), size: 24),
+                      Icon(Icons.star, color: Color(0xFFE3B400), size: 24),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -277,8 +381,9 @@ class _NotificationState extends State<notification> {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 14,
-                        color: Color(0xFF564444),
-                        height: 1.3,
+                        color: kText,
+                        fontFamily: kFont,
+                        height: 1.25,
                       ),
                     ),
                   ),
@@ -302,24 +407,48 @@ class _NotificationState extends State<notification> {
         .toList();
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFFCFAFF),
-        borderRadius: BorderRadius.circular(20),
+        color: kFieldFill,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: kPrimary, width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 1. ส่วน Matching Percent (มุมขวาบนสุด)
+          Align(
+            alignment: Alignment.centerRight,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Matching ${candidate['matchPercent']}%',
+                  style: const TextStyle(
+                    color: kRed,
+                    fontSize: 15,
+                    fontFamily: kFont,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.check_circle, color: kGreen, size: 20),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+
+          // 2. ส่วนข้อมูลหลัก (ไอคอน และ ข้อความ อยู่ระนาบเดียวกัน)
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Icon(
-                Icons.verified_user_outlined,
-                color: Color(0xFF0D47A1),
-                size: 34,
+                Icons.shield_outlined,
+                color: kPrimary,
+                size: 58,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -327,52 +456,45 @@ class _NotificationState extends State<notification> {
                     Text(
                       'ผู้ดูแล : ${candidate['caregiverType']}',
                       style: const TextStyle(
-                        fontSize: 17,
-                        color: Color(0xFF564444),
+                        fontSize: 14,
+                        color: kText,
+                        fontFamily: kFont,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       'ประสบการณ์ : ${candidate['experience']}',
                       style: const TextStyle(
-                        fontSize: 15,
-                        color: Color(0xFF564444),
+                        fontSize: 14,
+                        color: kText,
+                        fontFamily: kFont,
                       ),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(Icons.star, color: Color(0xFFE3B400), size: 20),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${candidate['rating']} (${candidate['reviewCount']} รีวิว)',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: kText,
+                            fontFamily: kFont,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Row(
-                children: [
-                  Text(
-                    '*Matching ${candidate['matchPercent']}%',
-                    style: const TextStyle(
-                      color: Color(0xFFE85B5B),
-                      fontSize: 15,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    width: 22,
-                    height: 22,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF39C327),
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: const Icon(
-                      Icons.check,
-                      color: Colors.white,
-                      size: 15,
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
+
+          // 3. ส่วนรีวิว (ListView แนวนอน)
           SizedBox(
-            height: 190,
+            height: 185,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: reviews.length,
@@ -385,44 +507,58 @@ class _NotificationState extends State<notification> {
               },
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
+
+          // 4. ส่วนปุ่ม (ชิดขวา และเล็กลง)
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               SizedBox(
-                width: 88,
-                height: 36,
+                width: 100,
+                height: 44,
                 child: ElevatedButton(
                   onPressed: onConfirm,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF39C327),
+                    backgroundColor: kGreen,
+                    elevation: 0,
                     padding: EdgeInsets.zero,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                   ),
                   child: const Text(
                     'ยืนยัน',
-                    style: TextStyle(fontSize: 15, color: Colors.white),
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: kWhite,
+                      fontFamily: kFont,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 10),
               SizedBox(
-                width: 88,
-                height: 36,
+                width: 100,
+                height: 44,
                 child: ElevatedButton(
                   onPressed: onReject,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE85B5B),
+                    backgroundColor: kRed,
+                    elevation: 0,
                     padding: EdgeInsets.zero,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                   ),
                   child: const Text(
                     'ปฏิเสธ',
-                    style: TextStyle(fontSize: 15, color: Colors.white),
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: kWhite,
+                      fontFamily: kFont,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
@@ -438,10 +574,11 @@ class _NotificationState extends State<notification> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFCFAFF),
+        color: kFieldFill,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: kPrimary, width: 1.2),
       ),
       child: Row(
         children: [
@@ -457,8 +594,70 @@ class _NotificationState extends State<notification> {
               '${elderly.nickName} : ${showStatusText(elderly.status)}',
               style: const TextStyle(
                 fontSize: 14,
-                color: Color(0xFF564444),
+                color: kText,
+                fontFamily: kFont,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopHeader() {
+    return const Text(
+      'ข้อมูลของผู้ดูแลที่ให้บริการ',
+      style: TextStyle(
+        fontSize: 16,
+        color: kText,
+        fontFamily: kFont,
+        fontWeight: FontWeight.w500,
+      ),
+    );
+  }
+
+  Widget _buildBottomBar() {
+    return Container(
+      height: 95,
+      decoration: const BoxDecoration(
+        color: kBottomBar,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(38)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          IconButton(
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const home()),
+              );
+            },
+            icon: const Icon(
+              Icons.home,
+              size: 40,
+              color: kPrimary,
+            ),
+          ),
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(
+              Icons.notifications,
+              size: 40,
+              color: kWhite,
+            ),
+          ),
+          IconButton(
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const profileUser()),
+              );
+            },
+            icon: const Icon(
+              Icons.account_circle,
+              size: 44,
+              color: kPrimary,
             ),
           ),
         ],
@@ -468,119 +667,94 @@ class _NotificationState extends State<notification> {
 
   @override
   Widget build(BuildContext context) {
-    final topMatches = getSortedTopMatches();
-    final elderlyIndex = currentPendingElderlyIndex;
+    final pIndexes = pendingIndexes;
+    final rIndexes = resultIndexes;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFDF0E8),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 8),
-              const Text(
-                'ข้อมูลของผู้ดูแลที่ให้บริการ',
-                style: TextStyle(fontSize: 20, color: Color(0xFF564444)),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: ListView(
-                  children: [
-                    if (elderlyIndex == null && resultIndexes.isEmpty) ...[
-                      const SizedBox(height: 140),
-                      const Center(
-                        child: Icon(
-                          Icons.account_circle_outlined,
-                          size: 160,
-                          color: Color(0xFFFCFAFF),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: kTopBar,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: kBackground,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 8),
+                _buildTopHeader(),
+                const SizedBox(height: 18),
+                Expanded(
+                  child: ListView(
+                    children: [
+                      if (isLoadingMatches)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 40),
+                          child: Center(child: CircularProgressIndicator(color: kPrimary)),
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      const Center(
-                        child: Text(
-                          'ไม่มีข้อมูล',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Color(0xFF564444),
-                          ),
-                        ),
-                      ),
-                    ],
-                    if (elderlyIndex != null) ...[
-                      Text(
-                        'ตัวเลือกผู้ดูแลสำหรับ : ${ElderlyStore.elderlyList[elderlyIndex].nickName}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFF564444),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      ...List.generate(topMatches.length, (index) {
-                        return buildCandidateCard(
-                          candidate: topMatches[index],
-                          rank: index + 1,
-                          onConfirm: () => confirmCandidate(index),
-                          onReject: rejectCurrentMatching,
+
+                      if (!isLoadingMatches && pIndexes.isEmpty && rIndexes.isEmpty) ...[
+                        const SizedBox(height: 140),
+                        const Center(child: Icon(Icons.account_circle_outlined, size: 170, color: kPrimary)),
+                        const SizedBox(height: 12),
+                        const Center(child: Text('ไม่มีข้อมูล', style: TextStyle(fontSize: 16, color: kText, fontFamily: kFont, fontWeight: FontWeight.w500))),
+                      ],
+
+                      // แสดงรายการผู้ดูแลแยกตามผู้สูงอายุที่กำลัง Matching
+                      ...pIndexes.map((idx) {
+                        final elderly = ElderlyStore.elderlyList[idx];
+                        final eId = elderly.elderlyId ?? '';
+                        final matches = getFilteredMatches(eId);
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              child: Text(
+                                'สำหรับ : คุณ${elderly.nickName}',
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: kPrimary, fontFamily: kFont),
+                              ),
+                            ),
+                            if (matches.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.only(bottom: 24),
+                                child: Text('ยังไม่พบผู้ดูแลที่เหมาะสม', style: TextStyle(color: kText, fontFamily: kFont)),
+                              ),
+                            ...List.generate(matches.length, (mIdx) {
+                              return buildCandidateCard(
+                                candidate: matches[mIdx],
+                                rank: mIdx + 1,
+                                onConfirm: () => confirmCandidate(eId, mIdx),
+                                onReject: () => handleRejectCandidate(matches[mIdx]['caregiverId']),
+                              );
+                            }),
+                          ],
                         );
                       }),
-                      const SizedBox(height: 10),
+
+                      // แสดงรายการที่จับคู่เสร็จแล้วหรือรอยืนยัน
+                      if (rIndexes.isNotEmpty) ...[
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Text('ผลการจับคู่ล่าสุด', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: kText, fontFamily: kFont)),
+                        ),
+                        ...rIndexes.map((idx) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: buildResultCard(idx),
+                            )),
+                      ],
                     ],
-                    ...resultIndexes.map((index) {
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: buildResultCard(index),
-                      );
-                    }),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-      bottomNavigationBar: Container(
-        height: 85,
-        decoration: const BoxDecoration(
-          color: Color(0xFFFCFAFF),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const home()),
-                );
-              },
-              icon: const Icon(Icons.home, size: 38, color: Color(0xFF0D47A1)),
-            ),
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(
-                Icons.notifications,
-                size: 38,
-                color: Color(0xFFEE711E),
-              ),
-            ),
-            IconButton(
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const profileUser()),
-                );
-              },
-              icon: const Icon(
-                Icons.account_circle,
-                size: 42,
-                color: Color(0xFF0D47A1),
-              ),
-            ),
-          ],
-        ),
+        bottomNavigationBar: _buildBottomBar(),
       ),
     );
   }

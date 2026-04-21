@@ -3,17 +3,34 @@ import 'package:carex/services/backend_data_service.dart';
 
 class ElderlyStore {
   static final List<ElderlyData> elderlyList = [];
+  
+  // จดจำ ID ผู้สูงอายุที่กดยืนยันเลือกผู้ดูแลไปแล้วในเซสชันนี้
+  // เพื่อป้องกันการนำกลับมาแสดงในส่วน Matching ซ้ำ
+  static final List<String> confirmedIds = [];
 
   static Future<void> syncFromBackend() async {
-    final list = await BackendDataService.fetchElderlies();
+    final data = await BackendDataService.fetchElderlies();
     elderlyList
       ..clear()
-      ..addAll(list);
+      ..addAll(data);
   }
 
-  static Future<void> saveToCache() async {
-    // intentionally no-op: database is the source of truth
+  static void markAsConfirmed(String id) {
+    if (id.isNotEmpty && !confirmedIds.contains(id)) {
+      confirmedIds.add(id);
+      print('DEBUG: [ElderlyStore] ID $id marked as CONFIRMED. Total: ${confirmedIds.length}');
+    }
   }
+
+  static bool isConfirmed(String id) {
+    final confirmed = confirmedIds.contains(id);
+    if (confirmed) {
+      print('DEBUG: [ElderlyStore] ID $id is already confirmed locally.');
+    }
+    return confirmed;
+  }
+
+  static Future<void> saveToCache() async {}
 
   static Future<void> upsert(ElderlyData elderly) async {
     final index = elderlyList.indexWhere((e) =>

@@ -33,7 +33,8 @@ class ProfileService {
           )
           .timeout(const Duration(seconds: 10));
 
-      print('ProfileService: POST /profile/caregiver status=${response.statusCode}');
+      print(
+          'ProfileService: POST /profile/caregiver status=${response.statusCode}');
       print('ProfileService: response body=${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -84,16 +85,18 @@ class ProfileService {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $token',
             },
-            body: jsonEncode(request.toJson()),
+            body: jsonEncode(request.toUpdateJson()),
           )
           .timeout(const Duration(seconds: 10));
 
-      print('ProfileService: PUT /profile/caregiver/$caregiverId status=${response.statusCode}');
+      print(
+          'ProfileService: PUT /profile/caregiver/$caregiverId status=${response.statusCode}');
       print('ProfileService: response body=${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final message = response.body.isNotEmpty
-            ? (jsonDecode(response.body)['message']?.toString() ?? 'อัปเดตโปรไฟล์สำเร็จ')
+            ? (jsonDecode(response.body)['message']?.toString() ??
+                'อัปเดตโปรไฟล์สำเร็จ')
             : 'อัปเดตโปรไฟล์สำเร็จ';
         return ProfileResult.success(message);
       }
@@ -137,12 +140,14 @@ class ProfileService {
           )
           .timeout(const Duration(seconds: 10));
 
-      print('ProfileService: PUT /profile/client status=${response.statusCode}');
+      print(
+          'ProfileService: PUT /profile/client status=${response.statusCode}');
       print('ProfileService: response body=${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final message = response.body.isNotEmpty
-            ? (jsonDecode(response.body)['message']?.toString() ?? 'อัปเดตโปรไฟล์สำเร็จ')
+            ? (jsonDecode(response.body)['message']?.toString() ??
+                'อัปเดตโปรไฟล์สำเร็จ')
             : 'อัปเดตโปรไฟล์สำเร็จ';
         return ProfileResult.success(message);
       }

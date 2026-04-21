@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/profileCaregiver_one.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/caregiverData.dart';
 import 'package:carex/Caregiver/Profile_Caregiver/caregiver_store.dart';
@@ -28,6 +29,13 @@ class selectRole extends StatefulWidget {
 class _selectRoleState extends State<selectRole> {
   String? selectedRole;
   bool isLoading = false;
+
+  static const Color kPrimary = Color(0xFFEE711E);
+  static const Color kWhite = Color(0xFFFFFFFF);
+  static const Color kText = Color(0xFF564444);
+  static const Color kTopBar = Color(0xFFFFC59E);
+  static const Color kBackground = Color(0xFFFDF0E8);
+  static const String kFont = 'Sarabun';
 
   Future<void> _registerAndProceed(String role) async {
     if (isLoading) return;
@@ -88,11 +96,9 @@ class _selectRoleState extends State<selectRole> {
       );
 
       if (role == 'client') {
-        // ถ้ามี clientId จาก login แล้ว ไม่ต้องสร้างใหม่
         if (clientId != null && clientId.isNotEmpty) {
           await AppSession.saveClientId(clientId);
         } else {
-          // สร้าง client profile ใหม่
           final clientResult = await AuthService.createClientProfile(
             fullname: widget.fullName,
             tel: AuthController.normalizePhone(widget.phone),
@@ -143,7 +149,16 @@ class _selectRoleState extends State<selectRole> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        SnackBar(
+          backgroundColor: kPrimary,
+          content: Text(
+            e.toString().replaceFirst('Exception: ', ''),
+            style: const TextStyle(
+              color: kWhite,
+              fontFamily: kFont,
+            ),
+          ),
+        ),
       );
     } finally {
       if (mounted) {
@@ -154,89 +169,121 @@ class _selectRoleState extends State<selectRole> {
     }
   }
 
+  Widget _roleCard({
+    required String roleValue,
+    required String label,
+    required VoidCallback? onTap,
+  }) {
+    final bool isSelected = selectedRole == roleValue;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 44),
+        decoration: BoxDecoration(
+          color: isSelected ? kPrimary : kWhite,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: kPrimary,
+            width: 1.2,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 18,
+            fontFamily: kFont,
+            fontWeight: FontWeight.w500,
+            color: isSelected ? kWhite : kText,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFDF0E8),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 25),
-          child: Column(
-            children: [
-              const SizedBox(height: 60),
-              Center(
-                child: Container(
-                  width: 100,
-                  height: 100,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFFFCFAFF),
-                  ),
-                  alignment: Alignment.center,
-                  child: const Text("LOGO"),
-                ),
-              ),
-              const SizedBox(height: 80),
-              GestureDetector(
-                onTap: isLoading ? null : () => _registerAndProceed('client'),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  decoration: BoxDecoration(
-                    color: selectedRole == "client"
-                        ? const Color(0xFFEE711E)
-                        : const Color(0xFFFCFAFF),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    isLoading && selectedRole == 'client'
-                        ? 'กำลังดำเนินการ...'
-                        : 'ผู้ใช้',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 30),
-              GestureDetector(
-                onTap:
-                    isLoading ? null : () => _registerAndProceed('caregiver'),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  decoration: BoxDecoration(
-                    color: selectedRole == "caregiver"
-                        ? const Color(0xFFEE711E)
-                        : const Color(0xFFFCFAFF),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    isLoading && selectedRole == 'caregiver'
-                        ? 'กำลังดำเนินการ...'
-                        : 'ผู้ดูแล',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 40),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: ElevatedButton(
-                  onPressed: isLoading ? null : () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF8B8E),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: kTopBar,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: kBackground,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 25),
+            child: Column(
+              children: [
+                const SizedBox(height: 60),
+                Center(
+                  child: Container(
+                    width: 100,
+                    height: 100,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: kPrimary,
+                    ),
+                    alignment: Alignment.center,
+                    child: const Text(
+                      "KareX",
+                      style: TextStyle(
+                        fontFamily: kFont,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: kWhite,
+                      ),
                     ),
                   ),
-                  child: const Text(
-                    "ย้อนกลับ",
-                    style: TextStyle(color: Color(0xFF564444)),
+                ),
+                const SizedBox(height: 80),
+                _roleCard(
+                  roleValue: 'client',
+                  label: isLoading && selectedRole == 'client'
+                      ? 'กำลังดำเนินการ...'
+                      : 'ผู้ใช้',
+                  onTap: isLoading ? null : () => _registerAndProceed('client'),
+                ),
+                const SizedBox(height: 30),
+                _roleCard(
+                  roleValue: 'caregiver',
+                  label: isLoading && selectedRole == 'caregiver'
+                      ? 'กำลังดำเนินการ...'
+                      : 'ผู้ดูแล',
+                  onTap:
+                      isLoading ? null : () => _registerAndProceed('caregiver'),
+                ),
+                const SizedBox(height: 40),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: ElevatedButton(
+                    onPressed: isLoading ? null : () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kPrimary,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      child: Text(
+                        "ย้อนกลับ",
+                        style: TextStyle(
+                          color: kWhite,
+                          fontFamily: kFont,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

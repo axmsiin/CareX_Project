@@ -1,6 +1,7 @@
 import 'package:carex/User/HomePages/addProfileElderly_five.dart';
 import 'package:carex/User/HomePages/elderlyData.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class addProfileElderly_four extends StatefulWidget {
   final ElderlyData elderlyData;
@@ -12,12 +13,21 @@ class addProfileElderly_four extends StatefulWidget {
 }
 
 class _addProfileElderly_fourState extends State<addProfileElderly_four> {
+  static const Color kPrimary = Color(0xFFEE711E);
+  static const Color kWhite = Color(0xFFFFFFFF);
+  static const Color kText = Color(0xFF564444);
+  static const Color kTopBar = Color(0xFFFFC59E);
+  static const Color kBackground = Color(0xFFFDF0E8);
+  static const Color kFieldFill = Color(0xFFF5F3F6);
+  static const Color kBottomBar = Color(0xFFFFC59E);
+  static const String kFont = 'Sarabun';
+
   late List<String> selectedNeeds;
   String? selectedNeedsError;
 
   final List<String> careOptions = const [
-    'พึ่งฟื้นหลังการรักษาในโรงพยาบาล',
-    'อยู่ระหว่างรักษาการในโรงพยาบาล',
+    'พักฟื้นหลังการรักษาในโรงพยาบาล',
+    'อยู่ระหว่างรักษาภายในโรงพยาบาล',
     'กิจวัตรประจำวัน',
     'เตือนการกินยา',
     'การวัดและจดบันทึกสัญญาณชีพ\nความดัน หรือ ออกซิเจน หรือ ไข้',
@@ -29,6 +39,21 @@ class _addProfileElderly_fourState extends State<addProfileElderly_four> {
   void initState() {
     super.initState();
     selectedNeeds = List<String>.from(widget.elderlyData.selectedNeeds);
+  }
+
+  Widget buildFieldError(String? error) {
+    if (error == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(left: 8, top: 4),
+      child: Text(
+        error,
+        style: const TextStyle(
+          color: Color(0xFFF04444),
+          fontSize: 14,
+          fontFamily: kFont,
+        ),
+      ),
+    );
   }
 
   Widget buildOptionBox(String text) {
@@ -52,39 +77,39 @@ class _addProfileElderly_fourState extends State<addProfileElderly_four> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFFCFAFF),
+          color: kFieldFill,
           borderRadius: BorderRadius.circular(14),
-          border: selectedNeedsError != null
-              ? Border.all(color: const Color(0xFFF04444))
-              : null,
+          border: Border.all(
+            color:
+                selectedNeedsError != null ? const Color(0xFFF04444) : kPrimary,
+            width: 1.2,
+          ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              isSelected ? Icons.check_box : Icons.check_box_outline_blank,
-              color: const Color(0xFFEE711E),
+            Padding(
+              padding: const EdgeInsets.only(top: 1),
+              child: Icon(
+                isSelected ? Icons.check_box : Icons.check_box_outline_blank,
+                color: kPrimary,
+                size: 22,
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 text,
-                style: const TextStyle(fontSize: 15, color: Color(0xFF564444)),
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: kText,
+                  fontFamily: kFont,
+                  height: 1.2,
+                ),
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget buildFieldError(String? error) {
-    if (error == null) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(left: 12, top: 4),
-      child: Text(
-        error,
-        style: const TextStyle(color: const Color(0xFFF04444), fontSize: 12),
       ),
     );
   }
@@ -112,96 +137,127 @@ class _addProfileElderly_fourState extends State<addProfileElderly_four> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFDF0E8),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                icon: const Icon(
-                  Icons.arrow_back_ios_new,
-                  color: Color(0xFF564444),
-                ),
-                label: const Text(
-                  'ข้อมูลผู้สูงอายุ',
-                  style: TextStyle(color: Color(0xFF564444)),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'ความต้องการในการดูแล*',
-                style: TextStyle(fontSize: 18, color: Color(0xFF564444)),
-              ),
-              const SizedBox(height: 14),
-              ...careOptions.map(
-                (item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: buildOptionBox(item),
-                ),
-              ),
-              buildFieldError(selectedNeedsError),
-              const SizedBox(height: 20),
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton(
-                  onPressed: goNext,
-                  style: ElevatedButton.styleFrom(
-                    elevation: 0,
-                    backgroundColor: const Color(0xFFEE711E),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                  ),
-                  child: const Text(
-                    'ถัดไป',
-                    style: TextStyle(color: Color(0xFF564444)),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 30),
-            ],
+  Widget _buildTopBar() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              size: 20,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(width: 10),
+          const Text(
+            'ข้อมูลผู้สูงอายุ',
+            style: TextStyle(
+              color: kText,
+              fontSize: 16,
+              fontFamily: kFont,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNextButton() {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: SizedBox(
+        width: 78,
+        height: 40,
+        child: ElevatedButton(
+          onPressed: goNext,
+          style: ElevatedButton.styleFrom(
+            elevation: 0,
+            backgroundColor: kPrimary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            padding: EdgeInsets.zero,
+          ),
+          child: const Text(
+            'ถัดไป',
+            style: TextStyle(
+              color: kWhite,
+              fontSize: 14,
+              fontFamily: kFont,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ),
-      bottomNavigationBar: Container(
-        height: 85,
-        decoration: const BoxDecoration(
-          color: Color(0xFFFCFAFF),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
+    );
+  }
+
+  Widget _buildBottomBar() {
+    return Container(
+      height: 95,
+      decoration: const BoxDecoration(
+        color: kBottomBar,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(38)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: const [
+          Icon(Icons.home, size: 42, color: kWhite),
+          Icon(Icons.notifications, size: 40, color: kPrimary),
+          Icon(Icons.account_circle, size: 46, color: kPrimary),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: kTopBar,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: kBackground,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildTopBar(),
+                const SizedBox(height: 46),
+                const Text(
+                  'ความต้องการในการดูแล*',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: kText,
+                    fontFamily: kFont,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ...careOptions.map(
+                  (item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: buildOptionBox(item),
+                  ),
+                ),
+                buildFieldError(selectedNeedsError),
+                const SizedBox(height: 18),
+                _buildNextButton(),
+                const SizedBox(height: 30),
+              ],
+            ),
+          ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.home, size: 34, color: Color(0xFFEE711E)),
-            ),
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(
-                Icons.notifications,
-                size: 38,
-                color: Color(0xFFEE711E),
-              ),
-            ),
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(
-                Icons.account_circle,
-                size: 42,
-                color: Color(0xFFEE711E),
-              ),
-            ),
-          ],
-        ),
+        bottomNavigationBar: _buildBottomBar(),
       ),
     );
   }
